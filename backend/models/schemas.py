@@ -9,6 +9,10 @@ class HealthResponse(BaseModel):
     version: str = Field("1.0.0", json_schema_extra={"example": "1.0.0"})
     environment: str = Field("on-premise / air-gapped", json_schema_extra={"example": "on-premise / air-gapped"})
     timestamp: str
+    ollama: Optional[str] = Field(None, json_schema_extra={"example": "available"})
+    models: Optional[Dict[str, bool]] = Field(None, json_schema_extra={"example": {"general": True, "coding": True}})
+    network: Optional[str] = Field("LOCAL_ONLY", json_schema_extra={"example": "LOCAL_ONLY"})
+
 
 # --- Document Processing ---
 
@@ -82,17 +86,30 @@ class TaskResponse(BaseModel):
 
 # --- LLM Abstraction ---
 
+class ModelRoutingResponse(BaseModel):
+    task_type: str = Field(..., json_schema_extra={"example": "coding"})
+    model: str = Field(..., json_schema_extra={"example": "qwen2.5-coder:7b"})
+    reason: str = Field(..., json_schema_extra={"example": "Coding task detected"})
+
 class LLMGenerateRequest(BaseModel):
     prompt: str = Field(..., json_schema_extra={"example": "Summarize the technical findings."})
     system_prompt: Optional[str] = Field(None, json_schema_extra={"example": "You are an industrial safety expert."})
     temperature: float = Field(0.7, json_schema_extra={"example": 0.7})
     max_tokens: int = Field(1000, json_schema_extra={"example": 1000})
+    model: Optional[str] = Field(None, json_schema_extra={"example": "llama3:latest"})
+    provider: Optional[str] = Field(None, json_schema_extra={"example": "ollama"})
+    auto_route: bool = Field(False, json_schema_extra={"example": True})
+    images: Optional[List[str]] = Field(default_factory=list, json_schema_extra={"example": []})
+
 
 class LLMGenerateResponse(BaseModel):
     text: str
     model: str = Field("mock-open-weight-v1", json_schema_extra={"example": "mock-open-weight-v1"})
     usage: Optional[Dict[str, int]] = Field(default_factory=dict)
     duration_ms: float = Field(0.0)
+    task_type: Optional[str] = None
+    routing_reason: Optional[str] = None
+
 
 # --- Audit Logs ---
 

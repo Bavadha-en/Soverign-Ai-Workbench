@@ -35,6 +35,24 @@ class MockLLMProvider(LLMProvider):
                 "Subject: Urgent Approval Request for Corrosion Remediation & Valve Replacement\n"
                 "Action Required: Approve procurement and work order for CV-102 replacement."
             )
+        elif any(kw in prompt_lower for kw in ["calculate", "python", "code", "pump efficiency", "script", "equation"]):
+            text = (
+                "Mock LLM Response (Coding Specialist):\n"
+                "```python\n"
+                "# Engineering Calculation Script\n"
+                "flow_rate_m3_s = 50.0 / 3600.0\n"
+                "head_m = 60.0\n"
+                "density = 1000.0\n"
+                "gravity = 9.81\n"
+                "hydraulic_power_w = density * gravity * flow_rate_m3_s * head_m\n"
+                "hydraulic_power_kw = hydraulic_power_w / 1000.0\n"
+                "power_in_kw = 11.0\n"
+                "efficiency_pct = (hydraulic_power_kw / power_in_kw) * 100.0\n"
+                "print(f'Hydraulic Power Output: {hydraulic_power_kw:.3f} kW')\n"
+                "print(f'Electrical Power Input: {power_in_kw:.2f} kW')\n"
+                "print(f'Pump Hydraulic Efficiency: {efficiency_pct:.2f}%')\n"
+                "```"
+            )
         else:
             text = f"Mock LLM Response: Analyzed input prompt '{request.prompt[:60]}...' successfully in offline mode."
 
