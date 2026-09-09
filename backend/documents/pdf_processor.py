@@ -1,6 +1,6 @@
 import io
 import os
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Optional, Union
 import pypdf
 
 
@@ -21,9 +21,33 @@ class PDFProcessor:
         else:
             raise ValueError("Unsupported source type for PDF processing.")
 
+    def extract_page_images(self, source: Union[str, bytes], output_dir: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Extract embedded images from all PDF pages."""
+        reader = self._get_reader(source)
+        target_dir = output_dir or os.path.join(os.getcwd(), "outputs", "extracted_images")
+        os.makedirs(target_dir, exist_ok=True)
+        extracted_images: List[Dict[str, Any]] = []
+
+        for i, page in enumerate(reader.pages):
+            try:
+                for img_idx, img in enumerate(page.images):
+                    img_filename = f"pdf_p{i+1}_img{img_idx}_{img.name}"
+                    img_path = os.path.join(target_dir, img_filename)
+                    with open(img_path, "wb") as f:
+                        f.write(img.data)
+                    extracted_images.append({
+                        "page": i + 1,
+                        "image_index": img_idx,
+                        "name": img.name,
+                        "file_path": img_path
+                    })
+            except Exception:
+                pass
+        return extracted_images
+
     def process_pdf(self, source: Union[str, bytes]) -> Dict[str, Any]:
         """
-        Extract complete metadata, page count, and full text from PDF.
+        Extract complete metadata, page count, full text, and embedded images from PDF.
         """
         reader = self._get_reader(source)
         num_pages = len(reader.pages)
@@ -49,6 +73,7 @@ class PDFProcessor:
                 metadata[clean_k] = str(v)
 
         is_scanned = total_chars < 50 and num_pages > 0
+        extracted_images = self.extract_page_images(source)
 
         return {
             "pages": num_pages,
@@ -56,7 +81,8 @@ class PDFProcessor:
             "is_scanned": is_scanned,
             "text_extracted": not is_scanned,
             "metadata": metadata,
-            "pages_data": pages_text
+            "pages_data": pages_text,
+            "images": extracted_images
         }
 
     def extract_full_text(self, source: Union[str, bytes]) -> str:

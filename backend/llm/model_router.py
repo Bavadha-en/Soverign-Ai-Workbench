@@ -116,8 +116,8 @@ class ModelRouter:
             "python", "code", "programming", "script", "function", "debug",
             "refactor", "algorithm", "class", "syntax", "compile", "unit test",
             "sql", "regex", "fastapi", "def ", "import ", "write code",
-            "implement", "bug fix", "coding", "calculate pump efficiency",
-            "calculate pressure drop", "pipe friction"
+            "implement", "bug fix", "coding", "calculate", "computation",
+            "formula", "equation", "pump efficiency", "pressure drop", "pipe friction"
         ]
         if any(kw in prompt_lower for kw in coding_keywords):
             return self._resolve_model("coding")

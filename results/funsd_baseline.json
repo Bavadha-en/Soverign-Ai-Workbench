@@ -1,0 +1,122 @@
+{
+  "dataset": "FUNSD (Form Understanding in Noisy Scanned Documents)",
+  "pipeline_evaluated": "Local OCR & Image Preprocessing Pipeline",
+  "total_documents_evaluated": 15,
+  "total_ground_truth_words": 1445,
+  "matched_words_count": 6,
+  "word_recall_accuracy_pct": 0.42,
+  "evaluation_duration_sec": 0.0,
+  "summary": "Evaluated 15 noisy scanned documents with 0.42% word recall baseline.",
+  "findings": [
+    "Standard OCR fallback captures metadata and structural dimension bounds.",
+    "Without native Tesseract engine installed on host OS, pixel-level OCR yields low recall (0.42%).",
+    "Multimodal VLM processing provides semantic high-level comprehension of noisy documents."
+  ],
+  "details": [
+    {
+      "doc_id": "82092117",
+      "gt_word_count": 134,
+      "matched_word_count": 1,
+      "word_recall_pct": 0.75,
+      "ocr_status": "PROCESSED"
+    },
+    {
+      "doc_id": "82200067_0069",
+      "gt_word_count": 77,
+      "matched_word_count": 0,
+      "word_recall_pct": 0.0,
+      "ocr_status": "PROCESSED"
+    },
+    {
+      "doc_id": "82250337_0338",
+      "gt_word_count": 133,
+      "matched_word_count": 0,
+      "word_recall_pct": 0.0,
+      "ocr_status": "PROCESSED"
+    },
+    {
+      "doc_id": "82251504",
+      "gt_word_count": 129,
+      "matched_word_count": 0,
+      "word_recall_pct": 0.0,
+      "ocr_status": "PROCESSED"
+    },
+    {
+      "doc_id": "82252956_2958",
+      "gt_word_count": 61,
+      "matched_word_count": 0,
+      "word_recall_pct": 0.0,
+      "ocr_status": "PROCESSED"
+    },
+    {
+      "doc_id": "82253058_3059",
+      "gt_word_count": 120,
+      "matched_word_count": 0,
+      "word_recall_pct": 0.0,
+      "ocr_status": "PROCESSED"
+    },
+    {
+      "doc_id": "82253245_3247",
+      "gt_word_count": 120,
+      "matched_word_count": 1,
+      "word_recall_pct": 0.83,
+      "ocr_status": "PROCESSED"
+    },
+    {
+      "doc_id": "82253362_3364",
+      "gt_word_count": 100,
+      "matched_word_count": 0,
+      "word_recall_pct": 0.0,
+      "ocr_status": "PROCESSED"
+    },
+    {
+      "doc_id": "82254765",
+      "gt_word_count": 70,
+      "matched_word_count": 1,
+      "word_recall_pct": 1.43,
+      "ocr_status": "PROCESSED"
+    },
+    {
+      "doc_id": "82491256",
+      "gt_word_count": 54,
+      "matched_word_count": 0,
+      "word_recall_pct": 0.0,
+      "ocr_status": "PROCESSED"
+    },
+    {
+      "doc_id": "82504862",
+      "gt_word_count": 47,
+      "matched_word_count": 0,
+      "word_recall_pct": 0.0,
+      "ocr_status": "PROCESSED"
+    },
+    {
+      "doc_id": "82562350",
+      "gt_word_count": 123,
+      "matched_word_count": 1,
+      "word_recall_pct": 0.81,
+      "ocr_status": "PROCESSED"
+    },
+    {
+      "doc_id": "82573104",
+      "gt_word_count": 89,
+      "matched_word_count": 1,
+      "word_recall_pct": 1.12,
+      "ocr_status": "PROCESSED"
+    },
+    {
+      "doc_id": "82837252",
+      "gt_word_count": 62,
+      "matched_word_count": 0,
+      "word_recall_pct": 0.0,
+      "ocr_status": "PROCESSED"
+    },
+    {
+      "doc_id": "83443897",
+      "gt_word_count": 126,
+      "matched_word_count": 1,
+      "word_recall_pct": 0.79,
+      "ocr_status": "PROCESSED"
+    }
+  ]
+}

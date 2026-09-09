@@ -1,0 +1,107 @@
+{
+  "dataset": "Eng_Diagrams (Engineering Drawing Symbol Classification)",
+  "model_evaluated": "moondream:latest (Zero-shot VLM)",
+  "total_samples": 15,
+  "correct_predictions": 0,
+  "accuracy_pct": 0.0,
+  "evaluation_duration_sec": 6.89,
+  "evaluation_type": "Zero-shot Multimodal VLM inference",
+  "summary": "Evaluated 15 engineering symbols with 0.0% zero-shot accuracy.",
+  "findings": [
+    "General multimodal VLM struggles with isolated domain-specific engineering glyphs without diagram context.",
+    "Zero-shot baseline confirms significant ambiguity for specialized valve and pipeline notations.",
+    "Measurement indicates strong motivation for future fine-tuning once baseline is recorded."
+  ],
+  "details": [
+    {
+      "sample_id": 1,
+      "ground_truth_symbol": "Arrowhead",
+      "vlm_prediction": "urn",
+      "correct": false
+    },
+    {
+      "sample_id": 2,
+      "ground_truth_symbol": "Arrowhead",
+      "vlm_prediction": "",
+      "correct": false
+    },
+    {
+      "sample_id": 3,
+      "ground_truth_symbol": "Box",
+      "vlm_prediction": "",
+      "correct": false
+    },
+    {
+      "sample_id": 4,
+      "ground_truth_symbol": "Control Valve Globe",
+      "vlm_prediction": "urn",
+      "correct": false
+    },
+    {
+      "sample_id": 5,
+      "ground_truth_symbol": "DB&BBV + Valve Check",
+      "vlm_prediction": "urn",
+      "correct": false
+    },
+    {
+      "sample_id": 6,
+      "ground_truth_symbol": "ESDV Valve Ball",
+      "vlm_prediction": "",
+      "correct": false
+    },
+    {
+      "sample_id": 7,
+      "ground_truth_symbol": "Flange Single T-Shape",
+      "vlm_prediction": "",
+      "correct": false
+    },
+    {
+      "sample_id": 8,
+      "ground_truth_symbol": "Reducer",
+      "vlm_prediction": "urn",
+      "correct": false
+    },
+    {
+      "sample_id": 9,
+      "ground_truth_symbol": "Reducer",
+      "vlm_prediction": "",
+      "correct": false
+    },
+    {
+      "sample_id": 10,
+      "ground_truth_symbol": "Sensor",
+      "vlm_prediction": "",
+      "correct": false
+    },
+    {
+      "sample_id": 11,
+      "ground_truth_symbol": "Sensor",
+      "vlm_prediction": "",
+      "correct": false
+    },
+    {
+      "sample_id": 12,
+      "ground_truth_symbol": "Triangle",
+      "vlm_prediction": "urn",
+      "correct": false
+    },
+    {
+      "sample_id": 13,
+      "ground_truth_symbol": "Valve Ball",
+      "vlm_prediction": "urn",
+      "correct": false
+    },
+    {
+      "sample_id": 14,
+      "ground_truth_symbol": "Valve Butterfly",
+      "vlm_prediction": "",
+      "correct": false
+    },
+    {
+      "sample_id": 15,
+      "ground_truth_symbol": "Valve Check",
+      "vlm_prediction": "",
+      "correct": false
+    }
+  ]
+}

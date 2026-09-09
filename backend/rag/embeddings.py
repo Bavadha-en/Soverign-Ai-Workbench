@@ -81,7 +81,7 @@ class OllamaEmbedder(BaseEmbedder):
             return []
 
         try:
-            with httpx.Client(timeout=2.0) as client:
+            with httpx.Client(timeout=30.0) as client:
                 # 1. Try modern Ollama /api/embed batch API
                 resp = client.post(
                     f"{self.base_url}/api/embed",

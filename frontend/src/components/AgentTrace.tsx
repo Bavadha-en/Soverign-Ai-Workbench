@@ -7,8 +7,33 @@ import {
   Activity,
   Terminal,
   Layers,
+  ClipboardList,
+  Cog,
+  Eye,
+  ShieldCheck,
+  PackageCheck,
+  ChevronRight,
 } from 'lucide-react';
 import { AgentTaskState, PlanStep } from '../types/api';
+
+const AGENT_PHASES = [
+  { key: 'PLAN', label: 'PLAN', icon: ClipboardList, desc: 'Decompose task into tool-graph' },
+  { key: 'ACT', label: 'ACT', icon: Cog, desc: 'Execute tools in sandbox' },
+  { key: 'OBSERVE', label: 'OBSERVE', icon: Eye, desc: 'Collect and parse results' },
+  { key: 'VERIFY', label: 'VERIFY', icon: ShieldCheck, desc: 'Fact-check & bounds-check' },
+  { key: 'DELIVER', label: 'DELIVER', icon: PackageCheck, desc: 'Generate certified output' },
+] as const;
+
+function resolvePhaseIndex(status: string): number {
+  const s = status.toUpperCase();
+  if (s === 'PLANNING') return 0;
+  if (s === 'EXECUTING') return 1;
+  if (s === 'OBSERVING') return 2;
+  if (s === 'VERIFYING' || s === 'RETRYING') return 3;
+  if (s === 'COMPLETED') return 5; // past all phases
+  if (s === 'FAILED') return -1;
+  return 0;
+}
 
 interface AgentTraceProps {
   taskState: AgentTaskState | null;
@@ -94,6 +119,9 @@ export const AgentTrace: React.FC<AgentTraceProps> = ({ taskState, isRunning }) 
     }
   };
 
+  const phaseIndex = resolvePhaseIndex(taskState.status);
+  const isFailed = taskState.status.toUpperCase() === 'FAILED';
+
   return (
     <div className="card">
       <div className="card-header">
@@ -118,6 +146,34 @@ export const AgentTrace: React.FC<AgentTraceProps> = ({ taskState, isRunning }) 
           </div>
           {isRunning && <span className="status-dot pulse" style={{ backgroundColor: '#38bdf8' }} />}
         </div>
+      </div>
+
+      {/* Agentic State Machine Stepper */}
+      <div className="state-stepper" style={{ marginBottom: '16px' }}>
+        {AGENT_PHASES.map((phase, idx) => {
+          const Icon = phase.icon;
+          const isActive = idx === phaseIndex;
+          const isCompleted = phaseIndex > idx;
+          const isFailedPhase = isFailed && idx === Math.max(0, phaseIndex);
+          let cls = 'state-step';
+          if (isActive) cls += ' active';
+          else if (isCompleted) cls += ' completed';
+          if (isFailedPhase) cls = 'state-step failed';
+          return (
+            <React.Fragment key={phase.key}>
+              {idx > 0 && (
+                <ChevronRight
+                  size={16}
+                  className={`state-arrow${isCompleted ? ' completed' : ''}`}
+                />
+              )}
+              <div className={cls} title={phase.desc}>
+                <Icon size={13} />
+                <span>{phase.label}</span>
+              </div>
+            </React.Fragment>
+          );
+        })}
       </div>
 
       {/* Structured Plan Graph */}

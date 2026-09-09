@@ -1,0 +1,177 @@
+{
+  "dataset": "PIDQA (Process & Instrumentation Diagram QA)",
+  "model_evaluated": "llama3:latest / moondream:latest",
+  "total_samples": 20,
+  "correct_predictions": 1,
+  "accuracy_pct": 5.0,
+  "evaluation_duration_sec": 8.64,
+  "evaluation_type": "Zero-shot local inference (no fine-tuning)",
+  "summary": "Evaluated 20 PIDQA items with 5.0% baseline accuracy.",
+  "findings": [
+    "Counting questions achieve higher baseline accuracy when graph cypher is provided.",
+    "Complex multi-hop spatial connectivity questions require diagram-level relational reasoning.",
+    "Local sovereign reasoning without fine-tuning provides structured baseline."
+  ],
+  "details": [
+    {
+      "sample_id": 1,
+      "type": "Count",
+      "question": "How many symbols are categorized as 1?",
+      "ground_truth": "2",
+      "prediction": "The answer is: 1",
+      "correct": false
+    },
+    {
+      "sample_id": 2,
+      "type": "Count",
+      "question": "What's the count of symbols that are classified as 2?",
+      "ground_truth": "4",
+      "prediction": "The answer is: 0",
+      "correct": false
+    },
+    {
+      "sample_id": 3,
+      "type": "Count",
+      "question": "What is the number of symbols in 3?",
+      "ground_truth": "0",
+      "prediction": "The answer is: 0",
+      "correct": false
+    },
+    {
+      "sample_id": 4,
+      "type": "Count",
+      "question": "What's the number of symbols that fall under class 4?",
+      "ground_truth": "3",
+      "prediction": "The answer is: 1",
+      "correct": false
+    },
+    {
+      "sample_id": 5,
+      "type": "Count",
+      "question": "How many 5 symbols are there?",
+      "ground_truth": "1",
+      "prediction": "4",
+      "correct": false
+    },
+    {
+      "sample_id": 6,
+      "type": "Count",
+      "question": "Can you count the symbols that are in class 6?",
+      "ground_truth": "3",
+      "prediction": "True",
+      "correct": false
+    },
+    {
+      "sample_id": 7,
+      "type": "Count",
+      "question": "How many symbols are there in the category of class 7?",
+      "ground_truth": "5",
+      "prediction": "The answer is: 0",
+      "correct": false
+    },
+    {
+      "sample_id": 8,
+      "type": "Count",
+      "question": "What's the number of symbols that fall under class 8?",
+      "ground_truth": "5",
+      "prediction": "The answer is: 0",
+      "correct": false
+    },
+    {
+      "sample_id": 9,
+      "type": "Count",
+      "question": "Can you count the symbols that are in class 9?",
+      "ground_truth": "2",
+      "prediction": "True",
+      "correct": false
+    },
+    {
+      "sample_id": 10,
+      "type": "Count",
+      "question": "Can you provide the total count of symbols from class 10?",
+      "ground_truth": "1",
+      "prediction": "The answer is: 1",
+      "correct": false
+    },
+    {
+      "sample_id": 11,
+      "type": "Count",
+      "question": "How many 11?",
+      "ground_truth": "1",
+      "prediction": "4",
+      "correct": false
+    },
+    {
+      "sample_id": 12,
+      "type": "Count",
+      "question": "Can you count the symbols that are in class 12?",
+      "ground_truth": "4",
+      "prediction": "True",
+      "correct": false
+    },
+    {
+      "sample_id": 13,
+      "type": "Count",
+      "question": "Can you tell me how many symbols are there in the 13 class?",
+      "ground_truth": "2",
+      "prediction": "The answer is: 0",
+      "correct": false
+    },
+    {
+      "sample_id": 14,
+      "type": "Count",
+      "question": "Could you provide the count of symbols in class 14?",
+      "ground_truth": "0",
+      "prediction": "The answer is: 0",
+      "correct": false
+    },
+    {
+      "sample_id": 15,
+      "type": "Count",
+      "question": "What's the number of symbols that fall under class 15?",
+      "ground_truth": "1",
+      "prediction": "The answer is: 1",
+      "correct": false
+    },
+    {
+      "sample_id": 16,
+      "type": "Count",
+      "question": "What's the number of symbols that fall under class 16?",
+      "ground_truth": "1",
+      "prediction": "The answer is: 1",
+      "correct": false
+    },
+    {
+      "sample_id": 17,
+      "type": "Count",
+      "question": "What is the number of symbols in 17?",
+      "ground_truth": "2",
+      "prediction": "1",
+      "correct": false
+    },
+    {
+      "sample_id": 18,
+      "type": "Count",
+      "question": "How many 18 symbols are there?",
+      "ground_truth": "4",
+      "prediction": "4",
+      "correct": true
+    },
+    {
+      "sample_id": 19,
+      "type": "Count",
+      "question": "How many symbols fall under the category of class 19?",
+      "ground_truth": "1",
+      "prediction": "The answer is: 1",
+      "correct": false
+    },
+    {
+      "sample_id": 20,
+      "type": "Count",
+      "question": "Could you provide the count of symbols in class 20?",
+      "ground_truth": "5",
+      "prediction": "The answer is: 0",
+      "correct": false
+    }
+  ]
+}
