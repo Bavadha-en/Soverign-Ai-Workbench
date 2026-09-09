@@ -27,6 +27,8 @@ class Verifier:
             from backend.models.schemas import LLMGenerateRequest
 
             provider = get_llm_provider()
+            if provider.__class__.__name__ == "MockLLMProvider":
+                return None
             prompt = (
                 "You are a fact-verification engine. Given a CLAIM and SOURCE CONTEXT, determine if the claim is supported.\n\n"
                 f"CLAIM: {claim}\n\n"

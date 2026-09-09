@@ -40,7 +40,8 @@ export const SourcesPanel: React.FC<SourcesPanelProps> = ({ sources }) => {
         {sources.map((src: SourceReference, idx: number) => {
           const docName = src.document || (src as any).source || 'Technical Reference';
           const page = src.page !== undefined && src.page !== null ? src.page : (src as any).page_number;
-          const score = typeof src.score === 'number' ? (src.score * 100).toFixed(1) : (src as any).relevance ? `${((src as any).relevance * 100).toFixed(1)}` : '92.4';
+          const rawScore = typeof src.score === 'number' ? src.score : typeof (src as any).relevance === 'number' ? (src as any).relevance : null;
+          const score = rawScore !== null ? (rawScore * 100).toFixed(1) : null;
           const content = src.content || (src as any).text || (src as any).snippet || '';
 
           return (
@@ -66,19 +67,21 @@ export const SourcesPanel: React.FC<SourcesPanelProps> = ({ sources }) => {
                   )}
                 </div>
 
-                <div
-                  style={{
-                    fontSize: '10.5px',
-                    fontFamily: 'var(--font-mono)',
-                    color: '#38bdf8',
-                    backgroundColor: 'rgba(56, 189, 248, 0.1)',
-                    padding: '2px 6px',
-                    borderRadius: '3px',
-                    fontWeight: 600,
-                  }}
-                >
-                  Cosine: {score}%
-                </div>
+                {score !== null && (
+                  <div
+                    style={{
+                      fontSize: '10.5px',
+                      fontFamily: 'var(--font-mono)',
+                      color: '#38bdf8',
+                      backgroundColor: 'rgba(56, 189, 248, 0.1)',
+                      padding: '2px 6px',
+                      borderRadius: '3px',
+                      fontWeight: 600,
+                    }}
+                  >
+                    Cosine: {score}%
+                  </div>
+                )}
               </div>
 
               {content && (

@@ -1,4 +1,6 @@
+import logging
 import os
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,6 +16,21 @@ from backend.api.tools import router as tools_router
 from backend.llm.ollama_provider import OllamaLLMProvider
 from backend.llm.registry import model_registry
 from backend.models.schemas import HealthResponse
+from backend.rag.ingest import ingestion_engine
+
+logger = logging.getLogger("configiq")
+
+@asynccontextmanager
+async def lifespan(application: FastAPI):
+    kb_dir = os.path.join(os.getcwd(), "knowledge_base")
+    if os.path.isdir(kb_dir):
+        try:
+            result = ingestion_engine.ingest_directory(kb_dir)
+            logger.info("Knowledge base auto-indexed: %d documents, %d chunks", result.get("documents_indexed", 0), result.get("chunks_created", 0))
+        except Exception as exc:
+            logger.warning("Knowledge base auto-ingest failed (non-fatal): %s", exc)
+    yield
+
 
 app = FastAPI(
     title="ConfigIQ - Sovereign Agentic AI Workbench API",
@@ -24,6 +41,7 @@ app = FastAPI(
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
+    lifespan=lifespan,
 )
 
 # Enable local CORS for frontend/development access

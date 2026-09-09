@@ -10,6 +10,8 @@ import {
   AuditLogResponse,
   KnowledgeSearchResponse,
   KnowledgeIngestResponse,
+  ChatConversationRequest,
+  ChatConversationResponse,
 } from '../types/api';
 
 const API_BASE_URL: string =
@@ -175,6 +177,18 @@ class ApiService {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ directory_path: directoryPath, force_reindex: forceReindex }),
+    });
+  }
+
+  // --- Conversational Chat ---
+
+  public async chatConversation(request: ChatConversationRequest): Promise<ChatConversationResponse> {
+    return this.request<ChatConversationResponse>('/chat/conversation', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(request),
     });
   }
 

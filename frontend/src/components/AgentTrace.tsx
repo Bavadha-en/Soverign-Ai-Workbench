@@ -36,8 +36,8 @@ export const AgentTrace: React.FC<AgentTraceProps> = ({ taskState, isRunning }) 
     );
   }
 
-  const getStatusBadge = (status: string) => {
-    switch (status.toLowerCase()) {
+  const getStatusBadge = (status?: string | null) => {
+    switch ((status || 'pending').toLowerCase()) {
       case 'completed':
         return (
           <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#10b981', fontSize: '11px', fontWeight: 600 }}>
@@ -76,8 +76,8 @@ export const AgentTrace: React.FC<AgentTraceProps> = ({ taskState, isRunning }) 
     }
   };
 
-  const getStateColor = (st: string) => {
-    switch (st.toUpperCase()) {
+  const getStateColor = (st?: string | null) => {
+    switch ((st || 'PENDING').toUpperCase()) {
       case 'COMPLETED':
         return '#10b981';
       case 'FAILED':

@@ -41,11 +41,13 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
           <div className="header-title-group">
             <div className="header-title">
-              <span>CONFIGIQ</span>
-              <span className="header-title-badge">PS 26117</span>
+              <span>{health?.app_name ? health.app_name.toUpperCase() : 'CONFIGIQ'}</span>
+              <span className="header-title-badge">
+                {health?.environment ? (health.environment.includes('air-gapped') ? 'AIR-GAPPED' : 'LOCAL') : 'SOVEREIGN'}
+              </span>
             </div>
             <div className="header-subtitle">
-              Sovereign On-Premise Agentic AI Workbench
+              Sovereign On-Premise Industrial AI Workbench
             </div>
           </div>
         </div>

@@ -2,6 +2,7 @@ import React from 'react';
 import {
   LayoutDashboard,
   Terminal,
+  MessageSquare,
   Database,
   ShieldAlert,
   Server,
@@ -9,7 +10,7 @@ import {
   Layers,
 } from 'lucide-react';
 
-export type NavTab = 'dashboard' | 'workbench' | 'knowledge' | 'network' | 'audit_logs' | 'system';
+export type NavTab = 'dashboard' | 'workbench' | 'chat' | 'knowledge' | 'network' | 'audit_logs' | 'system';
 
 interface SidebarProps {
   currentTab: NavTab;
@@ -41,6 +42,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
           >
             <Terminal size={15} />
             <span>Workbench</span>
+          </button>
+          <button
+            className={`nav-item ${currentTab === 'chat' ? 'active' : ''}`}
+            onClick={() => onSelectTab('chat')}
+          >
+            <MessageSquare size={15} />
+            <span>Chat</span>
           </button>
           <button
             className={`nav-item ${currentTab === 'knowledge' ? 'active' : ''}`}
@@ -94,7 +102,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
             <div>{toolCount} Local Tools Registered</div>
             <div style={{ color: 'var(--text-muted)', fontSize: '10px', marginTop: '2px' }}>
-              Phase 5A Deliverables Active
+              {toolCount > 0 ? 'Active & Ready' : 'Initializing...'}
             </div>
           </div>
         </div>
@@ -103,10 +111,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <div className="sidebar-footer">
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-secondary)', marginBottom: '3px' }}>
           <Cpu size={12} />
-          <span>ConfigIQ v1.0.0</span>
+          <span>ConfigIQ Enterprise</span>
         </div>
         <div style={{ fontSize: '10px', color: '#10b981' }}>
-          Air-Gapped Node #1
+          Air-Gapped Sovereign Node
         </div>
       </div>
     </aside>

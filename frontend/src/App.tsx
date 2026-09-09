@@ -3,6 +3,7 @@ import { Header } from './components/Header';
 import { Sidebar, NavTab } from './components/Sidebar';
 import { Dashboard } from './pages/Dashboard';
 import { Workbench } from './pages/Workbench';
+import { Chat } from './pages/Chat';
 import { Knowledge } from './pages/Knowledge';
 import { AuditLogs } from './pages/AuditLogs';
 import { SystemStatus } from './components/SystemStatus';
@@ -88,6 +89,8 @@ export const App: React.FC = () => {
           {currentTab === 'workbench' && (
             <Workbench initialTask={selectedTaskText} />
           )}
+
+          {currentTab === 'chat' && <Chat />}
 
           {currentTab === 'knowledge' && <Knowledge />}
 

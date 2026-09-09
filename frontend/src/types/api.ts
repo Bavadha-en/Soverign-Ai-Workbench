@@ -226,3 +226,22 @@ export interface KnowledgeIngestResponse {
   chunks_created: number;
   message: string;
 }
+
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export interface ChatConversationRequest {
+  messages: ChatMessage[];
+  system_prompt?: string;
+  auto_route?: boolean;
+}
+
+export interface ChatConversationResponse {
+  reply: string;
+  model: string;
+  task_type?: string | null;
+  duration_ms: number;
+  usage: Record<string, number>;
+}

@@ -88,7 +88,7 @@ export const NetworkMonitor: React.FC = () => {
               </span>
             </div>
             <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
-              Hardware & Socket-Level Verification of Zero WAN / Cloud AI Ingress & Egress (SIH PS 26117)
+              Hardware & Socket-Level Verification of Zero WAN / Cloud Ingress & Egress
             </div>
           </div>
         </div>

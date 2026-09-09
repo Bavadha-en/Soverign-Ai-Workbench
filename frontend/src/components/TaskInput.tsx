@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Play,
   Upload,
@@ -63,18 +63,41 @@ interface TaskInputProps {
   onRunAgent: (task: string, documentIds: string[]) => Promise<void>;
   isRunning: boolean;
   activeTaskId?: string | null;
+  initialTask?: string;
 }
 
 export const TaskInput: React.FC<TaskInputProps> = ({
   onRunAgent,
   isRunning,
   activeTaskId,
+  initialTask,
 }) => {
-  const [taskText, setTaskText] = useState<string>(PRESETS[0].task);
+  const [taskText, setTaskText] = useState<string>(initialTask || PRESETS[0].task);
   const [uploadedDocs, setUploadedDocs] = useState<DocumentUploadResponse[]>([]);
+  const [availableSamples, setAvailableSamples] = useState<Array<{ filename: string; title: string; category?: string }>>([]);
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (initialTask) {
+      setTaskText(initialTask);
+    }
+  }, [initialTask]);
+
+  useEffect(() => {
+    const fetchSamples = async () => {
+      try {
+        const resp = await api.listSampleDocuments();
+        if (resp && resp.samples && resp.samples.length > 0) {
+          setAvailableSamples(resp.samples);
+        }
+      } catch (err) {
+        console.warn('Could not load sample documents list', err);
+      }
+    };
+    fetchSamples();
+  }, []);
 
   const handleSelectPreset = (preset: Preset) => {
     setTaskText(preset.task);
@@ -276,32 +299,35 @@ export const TaskInput: React.FC<TaskInputProps> = ({
           <div style={{ marginTop: '6px', padding: '8px 10px', backgroundColor: 'rgba(0, 0, 0, 0.25)', borderRadius: '4px', border: '1px solid var(--border-subtle)' }}>
             <div style={{ fontSize: '10.5px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '5px' }}>
               <Sparkles size={11} color="#fbbf24" />
-              <span>Demo Sample Files (1-Click Attach):</span>
+              <span>Sample Inspection Attachments (1-Click Load):</span>
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
-              {[
-                { name: 'metal_nut_surface_scratch.png', label: '🔩 Nut Scratch Defect' },
-                { name: 'metal_nut_bent_deformation.png', label: '⚙️ Nut Bent Defect' },
-                { name: 'cable_insulation_cut.png', label: '⚡ Cable Cut Defect' },
-                { name: 'structural_surface_crack.png', label: '🧱 Surface Crack' },
-                { name: 'scanned_inspection_sheet.png', label: '📋 Scanned Log' },
-              ].map((sample) => (
+              {(availableSamples.length > 0
+                ? availableSamples
+                : [
+                    { filename: 'metal_nut_surface_scratch.png', title: 'Nut Scratch Defect' },
+                    { filename: 'metal_nut_bent_deformation.png', title: 'Nut Bent Defect' },
+                    { filename: 'cable_insulation_cut.png', title: 'Cable Cut Defect' },
+                    { filename: 'structural_surface_crack.png', title: 'Surface Crack' },
+                    { filename: 'scanned_inspection_sheet.png', title: 'Scanned Log' },
+                  ]
+              ).map((sample) => (
                 <button
-                  key={sample.name}
+                  key={sample.filename}
                   type="button"
                   disabled={isUploading || isRunning}
                   onClick={async () => {
                     setIsUploading(true);
                     setUploadError(null);
                     try {
-                      const loaded = await api.loadSampleDocument(sample.name);
+                      const loaded = await api.loadSampleDocument(sample.filename);
                       setUploadedDocs((prev) => {
-                        if (prev.some((d) => d.filename === sample.name)) return prev;
+                        if (prev.some((d) => d.filename === sample.filename)) return prev;
                         return [...prev, loaded];
                       });
                     } catch (err: unknown) {
                       const msg = err instanceof Error ? err.message : String(err);
-                      setUploadError(`Failed to load sample ${sample.name}: ${msg}`);
+                      setUploadError(`Failed to load sample ${sample.filename}: ${msg}`);
                     } finally {
                       setIsUploading(false);
                     }
@@ -320,7 +346,7 @@ export const TaskInput: React.FC<TaskInputProps> = ({
                     transition: 'all 0.15s ease',
                   }}
                 >
-                  <span>{sample.label}</span>
+                  <span>{sample.title}</span>
                 </button>
               ))}
             </div>

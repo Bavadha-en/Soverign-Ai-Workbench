@@ -34,7 +34,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onNavigate,
   onSelectPresetAndRun,
 }) => {
-  const readyModelsCount = health?.models ? Object.values(health.models).filter(Boolean).length : 5;
+  const readyModelsCount = health?.models ? Object.values(health.models).filter(Boolean).length : 0;
 
   const quickScenarios = [
     {
@@ -89,11 +89,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 fontWeight: 600,
               }}
             >
-              AIR-GAPPED v1.0.0
+              {health?.environment ? (health.environment.includes('air-gapped') ? 'AIR-GAPPED' : 'LOCAL') : 'SOVEREIGN'}
             </span>
           </div>
           <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', maxWidth: '750px' }}>
-            Autonomous sovereign agentic workbench engineered for confidential industrial engineering workflows (Problem Statement 26117). 100% offline reasoning, multimodal inspection verification, isolated Python sandbox, and multi-format deliverable generation.
+            Autonomous sovereign agentic workbench engineered for confidential industrial engineering workflows. 100% offline reasoning, multimodal inspection verification, isolated Python sandbox, and multi-format deliverable generation.
           </p>
         </div>
 
@@ -118,10 +118,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <Lock size={14} color="#10b981" />
           </div>
           <div style={{ fontSize: '20px', fontWeight: 700, color: '#10b981' }}>
-            LOCAL_ONLY
+            {network?.status || 'LOCAL_ONLY'}
           </div>
           <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
-            0 External API Calls Detected
+            {network?.external_ai_calls ?? 0} External Calls Detected
           </div>
         </div>
 
@@ -134,10 +134,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <Cpu size={14} color="#38bdf8" />
           </div>
           <div style={{ fontSize: '20px', fontWeight: 700, color: '#38bdf8' }}>
-            {readyModelsCount} / 5 Ready
+            {readyModelsCount} Available
           </div>
           <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
-            Llama3, Qwen Coder, Moondream, Nomic
+            Local LLM & VLM Registry
           </div>
         </div>
 
@@ -150,10 +150,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <Layers size={14} color="#c084fc" />
           </div>
           <div style={{ fontSize: '20px', fontWeight: 700, color: '#c084fc' }}>
-            {tools.length || 11} Tools
+            {tools.length} Tools
           </div>
           <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
-            OCR, RAG, Code, Sandbox, Word/XLSX/PPTX
+            OCR, RAG, Sandbox, Word/XLSX/PPTX
           </div>
         </div>
 
@@ -169,7 +169,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             DOCX, XLSX, PPTX
           </div>
           <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
-            Phase 5A Multi-Format Generator
+            Multi-Format Document Generator
           </div>
         </div>
       </div>

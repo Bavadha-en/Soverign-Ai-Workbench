@@ -38,6 +38,11 @@ Thumbs.db
 sandbox/workspace/*
 !sandbox/workspace/.gitkeep
 
+# Temporary scratch scripts
+scratch_*.py
+scratch/
+
+
 # Outputs and Logs
 outputs/*
 !outputs/.gitkeep

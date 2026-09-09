@@ -23,6 +23,8 @@ class ModelRouter:
             from backend.models.schemas import LLMGenerateRequest
 
             provider = get_llm_provider()
+            if provider.__class__.__name__ == "MockLLMProvider":
+                return None
             classification_prompt = (
                 "Classify this task into exactly one category. "
                 "Categories: vision, coding_heavy, coding, general.\n"

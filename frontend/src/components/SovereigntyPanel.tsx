@@ -169,7 +169,7 @@ export const SovereigntyPanel: React.FC<SovereigntyPanelProps> = ({ network }) =
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <Globe2 size={15} color="#06b6d4" />
           <span>
-            <strong>SIH 26117 Guarantee:</strong> Engineering scripts, inspection OCR, and model inferences execute 100% within local memory boundaries with no socket transmission to external endpoints.
+            <strong>Air-Gapped Sovereign Guarantee:</strong> Engineering scripts, inspection OCR, and model inferences execute 100% within local memory boundaries with zero external telemetry.
           </span>
         </div>
         {isSovereign ? (
