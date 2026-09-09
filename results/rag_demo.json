@@ -1,0 +1,55 @@
+{
+  "status": "PASS",
+  "query": "What is the recommended inspection/maintenance procedure for a centrifugal pump showing elevated vibration?",
+  "embedder_model": "nomic-embed-text:latest via Ollama (100% localhost)",
+  "vector_store_type": "LocalVectorStore (Cosine Similarity)",
+  "total_indexed_chunks": 87,
+  "retrieval_latency_ms": 2096.14,
+  "top_chunks": [
+    {
+      "chunk_id": "sop_centrifugal_pump_maintenance.md_p1_c0",
+      "source_document": "sop_centrifugal_pump_maintenance.md",
+      "page": 1,
+      "relevance_score": 0.7789,
+      "content_snippet": "# Standard Operating Procedure: Centrifugal Pump Overhaul & Mechanical Seal Maintenance (SOP-M-104)\n\n## 1. Scope & Objective\nThis Standard Operating Procedure (SOP-M-104) defines the mandatory technical guidelines and safety steps for vibration diagnosis, precision shaft alignment, mechanical seal o...",
+      "full_content": "# Standard Operating Procedure: Centrifugal Pump Overhaul & Mechanical Seal Maintenance (SOP-M-104)\n\n## 1. Scope & Objective\nThis Standard Operating Procedure (SOP-M-104) defines the mandatory technical guidelines and safety steps for vibration diagnosis, precision shaft alignment, mechanical seal overhaul, and casing integrity inspection of industrial centrifugal slurry and cooling water pumps (P-401 and P-402 series).\n\n## 2. Safety Precautions & Hazardous Energy Isolation (LOTO)\n- Apply full"
+    },
+    {
+      "chunk_id": "SOP-M-104_centrifugal_pump_maintenance.md_p1_c0",
+      "source_document": "SOP-M-104_centrifugal_pump_maintenance.md",
+      "page": 1,
+      "relevance_score": 0.7572,
+      "content_snippet": "# Standard Operating Procedure: Centrifugal Pump Overhaul & Mechanical Seal Maintenance (SOP-M-104)\n\n## 1. Purpose & Scope\nThis Standard Operating Procedure (SOP-M-104) defines mandatory maintenance, inspection, and overhaul protocols for single-stage and multi-stage industrial centrifugal pumps (in...",
+      "full_content": "# Standard Operating Procedure: Centrifugal Pump Overhaul & Mechanical Seal Maintenance (SOP-M-104)\n\n## 1. Purpose & Scope\nThis Standard Operating Procedure (SOP-M-104) defines mandatory maintenance, inspection, and overhaul protocols for single-stage and multi-stage industrial centrifugal pumps (including P-101, P-102, P-201, and P-202 series) handling hydrocarbons, cooling water, and slurry. Conforms to ISO 10816-3 Class II and API 610 11th Edition.\n\n## 2. Safety Precautions & Energy"
+    },
+    {
+      "chunk_id": "SOP-M-104_centrifugal_pump_maintenance.md_p1_c2",
+      "source_document": "SOP-M-104_centrifugal_pump_maintenance.md",
+      "page": 1,
+      "relevance_score": 0.7363,
+      "content_snippet": "3. Vibration & Condition Monitoring Thresholds (ISO 10816-3 Class II)\nTriaxial velocity vibration measurements must be logged on pump and motor bearing housings (horizontal, vertical, axial):\n- **Zone A / Good (< 1.8 mm/s RMS)**: Newly commissioned or precision-rebuilt machine.\n- **Zone B / Acceptab...",
+      "full_content": "3. Vibration & Condition Monitoring Thresholds (ISO 10816-3 Class II)\nTriaxial velocity vibration measurements must be logged on pump and motor bearing housings (horizontal, vertical, axial):\n- **Zone A / Good (< 1.8 mm/s RMS)**: Newly commissioned or precision-rebuilt machine.\n- **Zone B / Acceptable (1.8 - 4.5 mm/s RMS)**: Normal continuous industrial operation.\n- **Zone C / Warning (4.5 - 7.1 mm/s RMS)**: Elevated vibration indicating bearing degradation, cavitation, or unbalance. Schedule"
+    },
+    {
+      "chunk_id": "SOURCES.md_p1_c3",
+      "source_document": "SOURCES.md",
+      "page": 1,
+      "relevance_score": 0.731,
+      "content_snippet": "t Is Relevant**: Defines quantitative thresholds for centrifugal pump vibration (Zone A <1.8 mm/s, Zone B 1.8-4.5 mm/s, Zone C 4.5-7.1 mm/s, Zone D >7.1 mm/s), mechanical seal leakage limits (<5 drops/min), and shaft alignment tolerances (0.05 mm). Crucial for ground-truth verification of pump P-101...",
+      "full_content": "t Is Relevant**: Defines quantitative thresholds for centrifugal pump vibration (Zone A <1.8 mm/s, Zone B 1.8-4.5 mm/s, Zone C 4.5-7.1 mm/s, Zone D >7.1 mm/s), mechanical seal leakage limits (<5 drops/min), and shaft alignment tolerances (0.05 mm). Crucial for ground-truth verification of pump P-101 inspection findings.\n\n---\n\n### Document 2: In-Service Pressure Vessel Non-Destructive Inspection (SOP-INS-301)\n- **Document**: Standard Operating Procedure: In-Service Pressure Vessel"
+    },
+    {
+      "chunk_id": "sop_centrifugal_pump_maintenance.md_p1_c2",
+      "source_document": "sop_centrifugal_pump_maintenance.md",
+      "page": 1,
+      "relevance_score": 0.7007,
+      "content_snippet": ".\n- Mandatory PPE: Safety glasses with side shields, chemical-resistant nitrile gloves, steel-toe boots, and hearing protection.\n\n## 3. Vibration & Dynamic Operational Thresholds (ISO 10816-3 Class II)\nPrior to shutdown, perform triaxial vibration analysis on pump and motor bearing housings:\n- **Zon...",
+      "full_content": ".\n- Mandatory PPE: Safety glasses with side shields, chemical-resistant nitrile gloves, steel-toe boots, and hearing protection.\n\n## 3. Vibration & Dynamic Operational Thresholds (ISO 10816-3 Class II)\nPrior to shutdown, perform triaxial vibration analysis on pump and motor bearing housings:\n- **Zone A / Good (< 1.8 mm/s RMS)**: Newly commissioned or completely overhauled machinery.\n- **Zone B / Acceptable (1.8 \u2013 4.5 mm/s RMS)**: Normal continuous operation with no restrictions.\n- **Zone C /"
+    }
+  ],
+  "grounding_checks": {
+    "pump_sop_retrieved": true,
+    "vibration_thresholds_present": true,
+    "valid_positive_cosine_scores": true
+  }
+}

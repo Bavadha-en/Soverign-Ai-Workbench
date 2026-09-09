@@ -7,6 +7,13 @@ from backend.services.network_monitor import network_monitor
 client = TestClient(app)
 
 
+@pytest.fixture(autouse=True)
+def reset_network():
+    network_monitor.reset()
+    yield
+    network_monitor.reset()
+
+
 def test_network_telemetry_endpoint():
     """Verify that /network/telemetry returns full air-gap socket telemetry."""
     response = client.get("/network/telemetry")
@@ -58,3 +65,4 @@ def test_network_monitor_external_blocking():
     assert blocked_event.is_external is True
     telemetry = network_monitor.get_telemetry()
     assert telemetry.wan_egress_blocked >= initial_blocked + 1
+    network_monitor.reset()

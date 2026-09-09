@@ -1,0 +1,68 @@
+{
+  "total_tested": 5,
+  "all_passed": true,
+  "model_matrix": {
+    "general_reasoning": "llama3:latest",
+    "coding_standard": "qwen2.5-coder:7b",
+    "coding_heavy": "qwen2.5-coder:14b",
+    "vision_multimodal": "moondream:latest",
+    "embeddings": "nomic-embed-text:latest"
+  },
+  "routing_evaluations": [
+    {
+      "category": "General Reasoning",
+      "prompt": "What are the key safety considerations and personnel PPE requirements before inspecting an industrial cooling tower?",
+      "image_present": false,
+      "expected_task_type": "general",
+      "expected_model": "llama3",
+      "selected_task_type": "general",
+      "selected_model": "llama3:latest",
+      "reasoning": "General reasoning task detected via keyword matching; routed to general language model.",
+      "passed": true
+    },
+    {
+      "category": "Coding",
+      "prompt": "Write a Python script to parse an industrial Modbus TCP packet log and calculate average sensor latency.",
+      "image_present": false,
+      "expected_task_type": "coding",
+      "expected_model": "qwen2.5-coder",
+      "selected_task_type": "coding",
+      "selected_model": "qwen2.5-coder:7b",
+      "reasoning": "Coding task detected via keyword matching; routed to local coding specialist model.",
+      "passed": true
+    },
+    {
+      "category": "Calculation (Heavy Coding)",
+      "prompt": "Implement a finite element numerical simulation and complex engineering calculation program to solve 2D heat conduction across a multi-layer boiler wall.",
+      "image_present": false,
+      "expected_task_type": "coding_heavy",
+      "expected_model": "qwen2.5-coder:14b",
+      "selected_task_type": "coding_heavy",
+      "selected_model": "qwen2.5-coder:14b",
+      "reasoning": "Complex coding task detected via keyword matching; routed to high-parameter coding model.",
+      "passed": true
+    },
+    {
+      "category": "Image / P&ID Analysis",
+      "prompt": "Analyze this scanned image of a piping and instrumentation diagram to detect pump tags and valve positions.",
+      "image_present": true,
+      "expected_task_type": "vision",
+      "expected_model": "moondream",
+      "selected_task_type": "vision",
+      "selected_model": "moondream",
+      "reasoning": "Vision task detected via LLM classification; routed to local vision model.",
+      "passed": true
+    },
+    {
+      "category": "Document Analysis",
+      "prompt": "Summarize the major inspection findings, corrosion rates, and regulatory compliance status from this annual refinery audit report.",
+      "image_present": false,
+      "expected_task_type": "general",
+      "expected_model": "llama3",
+      "selected_task_type": "general",
+      "selected_model": "llama3:latest",
+      "reasoning": "General reasoning task detected via keyword matching; routed to general language model.",
+      "passed": true
+    }
+  ]
+}

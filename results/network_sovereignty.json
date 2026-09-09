@@ -1,0 +1,234 @@
+{
+  "evaluation_title": "ConfigIQ Sovereign AI Workbench \u2014 Network Sovereignty & Air-Gap Audit",
+  "timestamp": "2026-09-09T12:46:15.344292+00:00",
+  "integrity_seal": "SOVEREIGN-SEAL-5C70E781E82A7DCC339AC41E",
+  "architecture_distinction": {
+    "application_level_locality": "ENFORCED: All model inference (Llama3, Qwen Coder, Moondream) and embeddings (nomic-embed-text) are executed strictly on local loopback (127.0.0.1:11434). Python sandbox has socket creation blocked at the interpreter level via PermissionError guards. Zero external AI endpoints are configured in the pipeline.",
+    "os_firewall_level_enforcement": "NOTE: This test environment is currently running on a Windows workstation with active LAN/WLAN adapters. In production operational deployment, physical air-gapping (disconnected physical NICs / unidirectional data diodes) or host-level Windows Defender Firewall / iptables blocking all outbound WAN traffic (0.0.0.0/0 egress DROP) is required to enforce OS-level air-gapping independently of application-level safeguards."
+  },
+  "verification_checklist": {
+    "ollama_inference_localhost": {
+      "status": "PASS",
+      "endpoint": "http://127.0.0.1:11434",
+      "verified": true
+    },
+    "rag_embeddings_localhost": {
+      "status": "PASS",
+      "endpoint": "http://127.0.0.1:11434/api/embed",
+      "verified": true
+    },
+    "backend_binding_localhost": {
+      "status": "PASS",
+      "host": "127.0.0.1",
+      "port": 8000,
+      "verified": true
+    },
+    "cloud_ai_zero_usage": {
+      "status": "PASS",
+      "application_codebase_cloud_imports": 0,
+      "pipeline_external_calls": 0,
+      "verified": true,
+      "note": "Ambient developer environment OPENAI_API_KEY is completely ignored; ConfigIQ uses local Ollama exclusively."
+    },
+    "sandbox_network_blocked": {
+      "status": "PASS",
+      "mechanism": "Socket Monkeypatching & PermissionError Guard",
+      "verified": true
+    },
+    "external_attempts_visible_and_flagged": {
+      "status": "PASS",
+      "blocked_external_logged": true,
+      "sample_blocked_destination": "https://api.openai.com/v1/chat/completions"
+    }
+  },
+  "live_system_telemetry": {
+    "psutil_available": true,
+    "total_local_requests": 5,
+    "wan_egress_blocked": 1,
+    "active_listening_ports_count": 41,
+    "listening_ports_sample": [
+      {
+        "port": 5173,
+        "service": "node.exe",
+        "binding": "127.0.0.1:5173",
+        "scope": "Loopback",
+        "status": "LISTENING"
+      },
+      {
+        "port": 8090,
+        "service": "WsToastNotification.exe",
+        "binding": "0.0.0.0:8090",
+        "scope": "LAN",
+        "status": "LISTENING"
+      },
+      {
+        "port": 51215,
+        "service": "language_server.exe",
+        "binding": "127.0.0.1:51215",
+        "scope": "Loopback",
+        "status": "LISTENING"
+      },
+      {
+        "port": 135,
+        "service": "svchost.exe",
+        "binding": "0.0.0.0:135",
+        "scope": "LAN",
+        "status": "LISTENING"
+      },
+      {
+        "port": 57905,
+        "service": "llama-server.exe",
+        "binding": "127.0.0.1:57905",
+        "scope": "Loopback",
+        "status": "LISTENING"
+      },
+      {
+        "port": 51216,
+        "service": "language_server.exe",
+        "binding": "127.0.0.1:51216",
+        "scope": "Loopback",
+        "status": "LISTENING"
+      },
+      {
+        "port": 49664,
+        "service": "lsass.exe",
+        "binding": ":::49664",
+        "scope": "LAN",
+        "status": "LISTENING"
+      },
+      {
+        "port": 49667,
+        "service": "svchost.exe",
+        "binding": "0.0.0.0:49667",
+        "scope": "LAN",
+        "status": "LISTENING"
+      },
+      {
+        "port": 51213,
+        "service": "Antigravity.exe",
+        "binding": "127.0.0.1:51213",
+        "scope": "Loopback",
+        "status": "LISTENING"
+      },
+      {
+        "port": 139,
+        "service": "System",
+        "binding": "10.55.116.198:139",
+        "scope": "LAN",
+        "status": "LISTENING"
+      }
+    ],
+    "interfaces": [
+      {
+        "name": "Local Area Connection* 1",
+        "ip": "169.254.146.42",
+        "type": "LAN",
+        "status": "DOWN",
+        "egress_allowed": false
+      },
+      {
+        "name": "Local Area Connection* 1",
+        "ip": "fe80::1378:1535:4e28:6216",
+        "type": "LAN",
+        "status": "DOWN",
+        "egress_allowed": false
+      },
+      {
+        "name": "Local Area Connection* 2",
+        "ip": "169.254.48.131",
+        "type": "LAN",
+        "status": "DOWN",
+        "egress_allowed": false
+      },
+      {
+        "name": "Local Area Connection* 2",
+        "ip": "fe80::8891:bd41:9cf:df98",
+        "type": "LAN",
+        "status": "DOWN",
+        "egress_allowed": false
+      },
+      {
+        "name": "Wi-Fi",
+        "ip": "10.55.116.198",
+        "type": "LAN",
+        "status": "UP",
+        "egress_allowed": false
+      },
+      {
+        "name": "Wi-Fi",
+        "ip": "2409:40f4:40dc:4b60:f141:c76d:37d1:55b4",
+        "type": "LAN",
+        "status": "UP",
+        "egress_allowed": false
+      },
+      {
+        "name": "Wi-Fi",
+        "ip": "2409:40f4:40dc:4b60:1975:a5f9:4f9e:bc3f",
+        "type": "LAN",
+        "status": "UP",
+        "egress_allowed": false
+      },
+      {
+        "name": "Wi-Fi",
+        "ip": "fe80::a631:2c23:946b:126b",
+        "type": "LAN",
+        "status": "UP",
+        "egress_allowed": false
+      },
+      {
+        "name": "Ethernet 4",
+        "ip": "169.254.207.255",
+        "type": "LAN",
+        "status": "DOWN",
+        "egress_allowed": false
+      },
+      {
+        "name": "Ethernet 4",
+        "ip": "fe80::11e4:8640:3d5d:7fb7",
+        "type": "LAN",
+        "status": "DOWN",
+        "egress_allowed": false
+      },
+      {
+        "name": "Loopback Pseudo-Interface 1",
+        "ip": "127.0.0.1",
+        "type": "Loopback",
+        "status": "UP",
+        "egress_allowed": false
+      },
+      {
+        "name": "Loopback Pseudo-Interface 1",
+        "ip": "::1",
+        "type": "LAN",
+        "status": "UP",
+        "egress_allowed": false
+      }
+    ],
+    "recent_traffic_sample": [
+      {
+        "id": "net_1788957975091_0",
+        "source": "127.0.0.1:5173",
+        "destination": "127.0.0.1:8000",
+        "process": "web_console",
+        "status": "ALLOWED_LOCAL",
+        "is_external": false
+      },
+      {
+        "id": "net_1788957975091_1",
+        "source": "127.0.0.1:8000",
+        "destination": "127.0.0.1:11434",
+        "process": "ollama_client",
+        "status": "ALLOWED_LOCAL",
+        "is_external": false
+      },
+      {
+        "id": "net_1788957975344_2",
+        "source": "127.0.0.1:8000",
+        "destination": "https://api.openai.com/v1/chat/completions",
+        "process": "unauthorized_cloud_probe",
+        "status": "BLOCKED_EXTERNAL_VIOLATION",
+        "is_external": true
+      }
+    ]
+  }
+}

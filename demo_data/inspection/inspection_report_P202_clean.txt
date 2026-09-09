@@ -1,0 +1,41 @@
+SOVEREIGN INDUSTRIAL PLANT INTEGRITY MANAGEMENT
+EQUIPMENT INSPECTION REPORT — ROTATING MACHINERY
+REPORT NO: IR-2026-P202-0822
+DATE OF INSPECTION: 2026-08-22
+INSPECTION TYPE: Routine In-Service Reliability Audit
+
+1. EQUIPMENT IDENTIFICATION
+Equipment Tag: P-202
+Equipment Description: Boiler Feed Water Secondary Booster Pump
+Service: Demineralized Boiler Feed Water (Density: 998 kg/m3)
+Drive Unit: 3.3kV High-Voltage Induction Motor (110 kW, 2950 RPM)
+Governing Specifications: ISO 10816-3 Class II / SOP-M-104
+
+2. OPERATIONAL MEASUREMENTS & SENSOR TELEMETRY
+- Vibration (Drive End Bearing RMS): 5.1 mm/s (WARNING: ISO 10816-3 Zone C band 4.5 - 7.1 mm/s)
+- Vibration (Outboard Bearing RMS): 3.2 mm/s (NORMAL: Zone B band 1.8 - 4.5 mm/s)
+- Bearing Temperature: 71.0 deg C (NORMAL: SOP-M-104 threshold <= 75.0 deg C)
+- Mechanical Seal Dynamic Leakage: 2 drops/minute (NORMAL: SOP-M-104 threshold <= 5 drops/min)
+- Suction Pressure: 0.85 MPa (Design normal)
+- Discharge Pressure: 4.20 MPa (Design normal)
+- Flow Rate: 82.0 m3/h (Design normal 80 - 85 m3/h)
+- Differential Head: 115.0 meters
+
+3. PHYSICAL & NON-DESTRUCTIVE EXAMINATION FINDINGS
+- Plan 53A dual mechanical seal barrier fluid reservoir is pressurized and stable. Seepage rate is minor (2 drops/min).
+- Drive-end bearing temperature is stable at 71.0 deg C. Vibration spectrum exhibits elevated 1X rotational unbalance peak at 5.1 mm/s.
+- Pump volute and suction pipe show uniform external surface oxidation with zero localized pitting.
+- Ultrasonic thickness survey confirms casing wall thickness of 26.4 mm (well above 19.8 mm required minimum).
+
+4. RISK SEVERITY & RISK CLASSIFICATION
+Overall Risk Severity: HIGH (PLANNED OVERHAUL REQUIRED)
+Risk Justification: Vibration falls into Zone C (4.5 - 7.1 mm/s), indicating mechanical unbalance or coupling wear. Equipment does not require emergency trip but necessitates overhaul within 14 days per SOP-M-104.
+
+5. INSPECTOR RECOMMENDATIONS & CORRECTIVE ACTIONS
+- Schedule planned maintenance overhaul within 14 days per SOP-M-104 Section 3.
+- Inspect motor-pump flexible coupling elastomeric insert for wear and backlash.
+- Re-lubricate bearing cavities with ISO VG 46 synthetic grease.
+- Monitor triaxial vibration daily to ensure levels do not escalate toward Zone D (> 7.1 mm/s).
+
+Lead Inspector: M. S. Thorne, Plant Reliability Engineer
+Signature: [Verified / Stamped: Plant Reliability Directorate]

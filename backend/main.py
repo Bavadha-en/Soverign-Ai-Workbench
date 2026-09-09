@@ -105,6 +105,54 @@ async def health_check():
     )
 
 
+@app.get("/stats", tags=["System"])
+async def system_stats():
+    """Aggregated system statistics for dashboard display."""
+    import glob as _glob
+    from backend.services.audit_service import audit_service
+    from backend.rag.vector_store import LocalVectorStore
+
+    logs = audit_service.get_logs(limit=10000)
+    tasks_completed = len([l for l in logs if l.action == "agent_run" and l.status == "SUCCESS"])
+    total_actions = len(logs)
+    external_attempts = audit_service.get_external_attempts_count()
+
+    kb_dir = os.path.join(os.getcwd(), "knowledge_base")
+    kb_docs = len(_glob.glob(os.path.join(kb_dir, "*.*"))) if os.path.isdir(kb_dir) else 0
+
+    vs = LocalVectorStore()
+    vs.load()
+    chunks_indexed = len(vs.documents)
+
+    output_dir = os.path.join(os.getcwd(), "outputs")
+    deliverables = []
+    if os.path.isdir(output_dir):
+        for ext in ("*.docx", "*.xlsx", "*.pptx", "*.pdf"):
+            deliverables.extend(_glob.glob(os.path.join(output_dir, "**", ext), recursive=True))
+
+    ollama_up = False
+    models_count = 0
+    try:
+        ollama_up = await ollama_probe.health_check()
+        if ollama_up:
+            installed = await ollama_probe.list_available_models()
+            models_count = len(installed)
+    except Exception:
+        pass
+
+    return {
+        "tasks_completed": tasks_completed,
+        "total_actions": total_actions,
+        "external_attempts": external_attempts,
+        "kb_documents": kb_docs,
+        "chunks_indexed": chunks_indexed,
+        "deliverables_generated": len(deliverables),
+        "ollama_available": ollama_up,
+        "models_loaded": models_count,
+        "uptime_status": "operational",
+    }
+
+
 @app.get("/outputs/{filename:path}", tags=["Deliverables"])
 async def download_output_file(filename: str):
     """

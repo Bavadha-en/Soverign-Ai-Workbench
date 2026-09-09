@@ -38,9 +38,9 @@ def extract_pdf(file_path: str, task_id: Optional[str] = None) -> Dict[str, Any]
                 processor = PDFProcessor()
                 res = processor.process_pdf(file_path)
                 pages_count = res.get("pages", 1)
-                full_text = res.get("text", "Extracted PDF content")
-                text_extracted = res.get("text_extracted", True)
-                ocr_pages = res.get("ocr_pages", [])
+                full_text = processor.extract_full_text(file_path) or "\n\n".join(p.get("text", "") for p in res.get("pages_data", []))
+                text_extracted = bool(full_text.strip())
+                ocr_pages = [p["page"] for p in res.get("pages_data", []) if not p.get("text", "").strip()]
             except Exception:
                 with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
                     full_text = f.read()

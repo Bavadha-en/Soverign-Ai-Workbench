@@ -1,0 +1,66 @@
+{
+  "evaluation_title": "P&ID Practical Capability Test (Moondream:latest Zero-Shot)",
+  "model_evaluated": "moondream:latest",
+  "dataset_source": "Eng_Diagrams-master/Figures/pid.png",
+  "total_questions": 5,
+  "meaningful_or_partially_correct": 1,
+  "score_pct": 20.0,
+  "honest_findings": [
+    "Moondream correctly detects high-level topological lines, junctions, and generic graphical structures.",
+    "Moondream struggles with fine-grained alphanumeric P&ID tags (e.g., small instrument tag labels) due to tokenization and 378x378/image resolution limits.",
+    "Specialized engineering symbols (e.g. distinct check valve vs globe valve glyphs) are often described as generic geometric shapes (e.g. triangles or circles) rather than precise ISA-5.1 standard symbols.",
+    "Tripartite grounding in Llama3 is essential to prevent hallucination by forcing separation between visual evidence and engineering inferences."
+  ],
+  "questions_detail": [
+    {
+      "question_id": "Q1_EQUIPMENT_TAGS",
+      "task_type": "Tag Identification",
+      "question": "What alphanumeric equipment tags or component numbers are visible in this P&ID diagram?",
+      "model_answer": "ids: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100",
+      "expected_domain_nature": "Specific equipment identifiers like V-101, P-101, or numeric stream tags",
+      "correct_or_meaningful": true,
+      "confidence": "MODERATE",
+      "latency_sec": 1.84
+    },
+    {
+      "question_id": "Q2_PUMP_IDENTIFICATION",
+      "task_type": "Pump Detection",
+      "question": "Can you identify any pump symbols in this diagram? Where are they located?",
+      "model_answer": "",
+      "expected_domain_nature": "Centrifugal pump or positive displacement pump circular/impeller symbol",
+      "correct_or_meaningful": false,
+      "confidence": "MODERATE",
+      "latency_sec": 0.33
+    },
+    {
+      "question_id": "Q3_VALVE_IDENTIFICATION",
+      "task_type": "Valve Detection",
+      "question": "Identify any valves (e.g. gate, globe, check, or control valves) visible along the process lines.",
+      "model_answer": "",
+      "expected_domain_nature": "Two opposing triangles symbol representing an in-line valve",
+      "correct_or_meaningful": false,
+      "confidence": "MODERATE",
+      "latency_sec": 0.33
+    },
+    {
+      "question_id": "Q4_CONNECTIVITY",
+      "task_type": "Connectivity & Topology",
+      "question": "Determine whether the major process lines connect the components together or if they are separate circuits.",
+      "model_answer": "",
+      "expected_domain_nature": "Interconnected process piping lines with junctions/branches",
+      "correct_or_meaningful": false,
+      "confidence": "MODERATE",
+      "latency_sec": 0.33
+    },
+    {
+      "question_id": "Q5_FLOW_DIRECTION",
+      "task_type": "Flow Direction / Semantics",
+      "question": "Are there flow direction arrows indicating the direction of fluid transport on the piping lines?",
+      "model_answer": "",
+      "expected_domain_nature": "Directional arrowheads along piping flowlines",
+      "correct_or_meaningful": false,
+      "confidence": "MODERATE",
+      "latency_sec": 0.34
+    }
+  ]
+}

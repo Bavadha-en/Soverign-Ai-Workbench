@@ -1,0 +1,37 @@
+{
+  "workflow": "User Request -> Model Router -> Qwen Coder -> Python Code -> Sandbox Execution -> Verifier -> Excel Deliverable",
+  "user_request": "Write Python code to calculate centrifugal pump hydraulic efficiency from flow rate, pressure rise, and input power. Include validation for invalid inputs.",
+  "routing": {
+    "task_type": "coding",
+    "model": "qwen2.5-coder:7b",
+    "reason": "Coding task detected via keyword matching; routed to local coding specialist model."
+  },
+  "model_used": "qwen2.5-coder:7b",
+  "generation_time_sec": 8.64,
+  "generated_code": "def calculate_pump_efficiency(flow_rate_m3_h, pressure_rise_bar, power_input_kw, fluid_density_kg_m3=1000.0):\n    # Validate inputs\n    if flow_rate_m3_h <= 0:\n        raise ValueError(\"Flow rate must be greater than zero.\")\n    if pressure_rise_bar <= 0:\n        raise ValueError(\"Pressure rise must be greater than zero.\")\n    if power_input_kw <= 0:\n        raise ValueError(\"Power input must be greater than zero.\")\n    \n    # Convert flow rate from m3/h to m3/s\n    flow_rate_m3_s = flow_rate_m3_h / 3600.0\n    \n    # Convert pressure rise from bar to Pa\n    pressure_rise_pa = pressure_rise_bar * 100000.0\n    \n    # Calculate hydraulic power (kW)\n    hydraulic_power_kw = (flow_rate_m3_s * pressure_rise_pa) / 1000.0\n    \n    # Calculate hydraulic efficiency (%)\n    hydraulic_efficiency_percent = (hydraulic_power_kw / power_input_kw) * 100.0\n    \n    return hydraulic_efficiency_percent\n\n# Test cases\ntry:\n    # Normal operation\n    efficiency = calculate_pump_efficiency(50, 6.0, 11.0)\n    print(f\"Hydraulic Efficiency: {efficiency:.2f}%\")\n    \n    # Error handling\n    efficiency = calculate_pump_efficiency(0, 6.0, 11.0)\nexcept ValueError as e:\n    print(e)\n    \ntry:\n    efficiency = calculate_pump_efficiency(50, -6.0, 11.0)\nexcept ValueError as e:\n    print(e)\n    \ntry:\n    efficiency = calculate_pump_efficiency(50, 6.0, 0)\nexcept ValueError as e:\n    print(e)",
+  "sandbox_execution": {
+    "exit_code": 0,
+    "status": "success",
+    "stdout": "Hydraulic Efficiency: 75.76%\nFlow rate must be greater than zero.\nPressure rise must be greater than zero.\nPower input must be greater than zero.",
+    "execution_time_ms": 105.73,
+    "isolation_mode": "subprocess"
+  },
+  "verification": {
+    "is_valid": true,
+    "status": "PASSED",
+    "stdout": "Hydraulic Efficiency: 75.76%\nFlow rate must be greater than zero.\nPressure rise must be greater than zero.\nPower input must be greater than zero.",
+    "notes": [
+      "Sandbox execution completed successfully with exit code 0."
+    ]
+  },
+  "network_guard_verification": {
+    "network_blocked": true,
+    "probe_output": "SECURITY PASS: Network access blocked: Network access is strictly forbidden inside sovereign sandbox."
+  },
+  "deliverable": {
+    "type": "xlsx",
+    "file_path": "D:\\sih2\\Soverign-Ai-Workbench-main\\Soverign-Ai-Workbench-main\\outputs\\Pump_Efficiency_Calculation.xlsx",
+    "created": true
+  },
+  "overall_status": "PASS"
+}

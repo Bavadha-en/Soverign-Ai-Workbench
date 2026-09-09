@@ -145,8 +145,8 @@ async def test_tool_execution_and_audit():
 
     # Verify audit log was recorded
     current_logs = audit_service.get_logs()
-    assert len(current_logs) > initial_log_count
-    latest_log = current_logs[-1]
+    assert any(l.task_id == "task_exec_test" for l in current_logs)
+    latest_log = [l for l in current_logs if l.task_id == "task_exec_test"][-1]
     assert latest_log.task_id == "task_exec_test"
     assert latest_log.action == "TOOL_RAG_SEARCH"
     assert latest_log.status == "SUCCESS"

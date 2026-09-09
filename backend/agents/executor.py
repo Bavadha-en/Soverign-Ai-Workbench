@@ -213,25 +213,40 @@ class ToolExecutor:
 
         elif tool_name == "document_generator":
             p["task_id"] = state.task_id
-            p["reference_document"] = p.get("reference_document", state.document_ids[0] if state.document_ids else "Industrial Inspection Report")
+            
+            doc_res = state.tool_results.get("extract_document", {})
+            doc_text = doc_res.get("text", "")
+
+            ref_doc = p.get("reference_document") or (state.document_ids[0] if state.document_ids else None) or "Industrial Inspection Report"
+            tag_match = re.search(r"\b(P-\d+|PV-\d+|CV-\d+|[A-Z]{1,3}-\d{2,4})\b", doc_text + " " + state.user_request)
+            if tag_match:
+                ref_doc = f"Inspection Report ({tag_match.group(1).upper()}) — {os.path.basename(str(ref_doc))}"
+            p["reference_document"] = ref_doc
 
             findings = []
             vision_res = state.tool_results.get("analyze_scanned_pages", {})
             if vision_res and vision_res.get("observations"):
                 findings.extend(vision_res["observations"])
-            doc_res = state.tool_results.get("extract_document", {})
-            doc_text = doc_res.get("text", "")
             if doc_text:
                 for line in doc_text.split("\n"):
-                    l = line.strip("- *")
-                    if ("thickness" in l.lower() or "defect" in l.lower() or "leak" in l.lower() or "corros" in l.lower() or "crack" in l.lower() or "measured" in l.lower()) and l not in findings:
+                    l = line.strip("- *\t")
+                    if len(l) < 8 or l.startswith("===") or l.startswith("###"):
+                        continue
+                    l_lower = l.lower()
+                    indicator_kws = [
+                        "thickness", "defect", "leak", "corros", "crack", "measured",
+                        "vibration", "temperature", "pressure", "seal", "bearing", "flow",
+                        "head", "rpm", "exceeded", "warning", "critical", "cavitation",
+                        "unbalance", "alignment", "weeping", "pitting"
+                    ]
+                    if any(kw in l_lower for kw in indicator_kws) and l not in findings:
                         findings.append(l)
             if not findings:
                 findings = [
                     "Equipment inspection completed per non-destructive testing protocol.",
                     "Wall thickness and structural integrity evaluated against design specification."
                 ]
-            p["inspection_findings"] = findings[:6]
+            p["inspection_findings"] = findings[:8]
 
             sops = []
             for c in state.retrieved_context:
@@ -255,23 +270,46 @@ class ToolExecutor:
             p["executive_summary"] = exec_sum
 
             # Dynamic risk severity
-            full_findings_text = " ".join(findings).lower()
-            if "severe" in full_findings_text or "critical" in full_findings_text or "crack" in full_findings_text or "rupture" in full_findings_text:
+            full_findings_text = (" ".join(findings).lower() + " " + doc_text.lower() + " " + state.user_request.lower())
+            if "zone d" in full_findings_text or "critical" in full_findings_text or "emergency" in full_findings_text or "shutdown" in full_findings_text or "rupture" in full_findings_text:
                 p["risk_severity"] = "CRITICAL"
                 p["approval_recommendation"] = "APPROVED FOR IMMEDIATE EMERGENCY REPAIR / REPLACEMENT"
-            elif "corros" in full_findings_text or "thinning" in full_findings_text or "leak" in full_findings_text:
+            elif "zone c" in full_findings_text or "warning" in full_findings_text or "overhaul within 14 days" in full_findings_text or "corros" in full_findings_text or "thinning" in full_findings_text or "leak" in full_findings_text:
                 p["risk_severity"] = "HIGH"
-                p["approval_recommendation"] = "APPROVED FOR SCHEDULED COMPONENT REPLACEMENT UNDER APPLICABLE SOP"
+                p["approval_recommendation"] = "APPROVED FOR SCHEDULED COMPONENT OVERHAUL UNDER APPLICABLE SOP"
             else:
                 p["risk_severity"] = "MEDIUM"
                 p["approval_recommendation"] = "APPROVED WITH ROUTINE MAINTENANCE MONITORING"
 
-            p["recommended_actions"] = [
-                "Execute Double Block and Bleed (DBB) isolation and LOTO per safety procedures.",
-                "Procure specification-compliant replacement components per governing ASME/API standards.",
-                "Perform torque validation and replacement gasket installation.",
-                "Conduct hydrostatic pressure validation test prior to unit recommissioning."
-            ]
+            # Dynamic extraction of recommendations from document text or LLM analysis
+            rec_actions = []
+            if doc_text:
+                in_rec_section = False
+                for line in doc_text.split("\n"):
+                    l = line.strip("- *\t")
+                    if "recommendation" in l.lower() or "corrective action" in l.lower():
+                        in_rec_section = True
+                        continue
+                    if in_rec_section:
+                        if line.startswith(("1.", "2.", "3.", "4.", "5.", "6.", "7.", "8.", "9.")) and not line.startswith(("-", "*", " ")):
+                            if "inspector" in l.lower() or "signature" in l.lower() or "report" in l.lower():
+                                break
+                        if len(l) > 15 and not l.startswith("===") and not l.startswith("###"):
+                            rec_actions.append(l)
+            if not rec_actions and llm_res and "text" in llm_res:
+                for line in llm_res["text"].split("\n"):
+                    l = line.strip("- *\t")
+                    if any(action_kw in l.lower() for action_kw in ["replace", "align", "shutdown", "isolate", "loto", "lubricate", "overhaul", "hydrostatic", "monitor", "inspect"]) and len(l) > 20:
+                        rec_actions.append(l)
+            if rec_actions:
+                p["recommended_actions"] = rec_actions[:5]
+            else:
+                p["recommended_actions"] = [
+                    "Execute Double Block and Bleed (DBB) isolation and LOTO per safety procedures.",
+                    "Procure specification-compliant replacement components per governing ASME/API standards.",
+                    "Perform torque validation and replacement gasket installation.",
+                    "Conduct hydrostatic pressure validation test prior to unit recommissioning."
+                ]
             p["sources"] = state.retrieved_context
 
             # Verification status & model

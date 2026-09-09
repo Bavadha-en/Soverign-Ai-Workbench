@@ -1,0 +1,69 @@
+{
+  "equipment": "P-101",
+  "equipment_name": "Primary Hydrocarbon Feed Centrifugal Pump",
+  "inspection_date": "2026-08-14",
+  "inspector": "Lead Inspector K. Vance, Senior Rotating Equipment Specialist",
+  "operating_condition": "Continuous Feed Service (1450 RPM, 415V Drive)",
+  "measurements": [
+    {
+      "parameter": "Vibration RMS",
+      "value": 7.4,
+      "unit": "mm/s",
+      "threshold": "<= 4.5 mm/s (Zone D > 7.1 mm/s)",
+      "status": "EXCEEDED"
+    },
+    {
+      "parameter": "Bearing Temperature",
+      "value": 88.0,
+      "unit": "deg C",
+      "threshold": "<= 75.0 deg C",
+      "status": "EXCEEDED"
+    },
+    {
+      "parameter": "Mechanical Seal Leakage",
+      "value": 14,
+      "unit": "drops/min",
+      "threshold": "<= 5 drops/min",
+      "status": "EXCEEDED"
+    },
+    {
+      "parameter": "Suction Pressure",
+      "value": 0.32,
+      "unit": "MPa",
+      "threshold": "0.30 - 0.40 MPa",
+      "status": "NORMAL"
+    },
+    {
+      "parameter": "Discharge Pressure",
+      "value": 1.85,
+      "unit": "MPa",
+      "threshold": "1.80 - 2.10 MPa",
+      "status": "NORMAL"
+    },
+    {
+      "parameter": "Flow Rate",
+      "value": 48.5,
+      "unit": "m3/h",
+      "threshold": "50.0 m3/h BEP",
+      "status": "SLIGHT DROP"
+    }
+  ],
+  "findings": [
+    "Excessive triaxial vibration of 7.4 mm/s RMS on outboard bearing housing exceeding ISO 10816-3 Zone D critical trip limit (7.1 mm/s).",
+    "Bearing operating temperature measured at 88 deg C exceeding maximum allowable threshold of 75 deg C per SOP-M-104.",
+    "Dynamic mechanical cartridge seal weeping 14 drops/minute exceeding allowable leakage limit of 5 drops/minute.",
+    "Localized pitting corrosion and cavitation erosion detected on impeller suction eye (depth: 1.2 mm)."
+  ],
+  "severity": "CRITICAL",
+  "governing_sops": [
+    "SOP-M-104",
+    "SOP-SAF-001"
+  ],
+  "recommendations": [
+    "Immediate emergency shutdown and electrical Lockout/Tagout (LOTO) per SOP-SAF-001.",
+    "Replace mechanical cartridge seal assembly.",
+    "Replace drive-end and non-drive-end ball and thrust bearings.",
+    "Laser align pump and motor shaft with angular offset <= 0.05 mm.",
+    "Execute casing hydrostatic proof test at 1.5x MAWP for 15 minutes before recommissioning."
+  ]
+}

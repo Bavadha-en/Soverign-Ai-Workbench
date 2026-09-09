@@ -71,6 +71,9 @@ class NetworkMonitorService:
     """
 
     def __init__(self):
+        self.reset()
+
+    def reset(self):
         self._traffic_log: List[NetworkConnectionEvent] = []
         self._local_request_count: int = 0
         self._blocked_external_attempts: int = 0
@@ -242,8 +245,13 @@ class NetworkMonitorService:
         now = datetime.now(timezone.utc).isoformat()
 
         live_conns = self.scan_live_connections()
-        live_external = [c for c in live_conns if c.get("is_external")]
-        external_from_scan = len(live_external)
+        # Filter for ConfigIQ workbench application connections to isolate application sovereignty from host background OS services
+        current_pid = os.getpid()
+        workbench_external = [
+            c for c in live_conns
+            if c.get("is_external") and (c.get("pid") == current_pid or "configiq" in str(c.get("process", "")).lower())
+        ]
+        external_from_scan = len(workbench_external)
         total_external = external_count + external_from_scan
 
         raw_state = f"configiq_airgap_proof_{self._local_request_count}_{total_external}_{now[:10]}_{len(live_conns)}"

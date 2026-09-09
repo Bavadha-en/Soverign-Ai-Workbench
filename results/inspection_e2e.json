@@ -1,0 +1,46 @@
+{
+  "workflow": "Inspection Report -> Document Extraction -> OCR -> VLM -> RAG -> Llama3 Reasoning -> Verification -> Approval Note DOCX",
+  "hardcode_check": "PASS",
+  "models_used": {
+    "general_reasoning": "llama3:latest",
+    "vision": "moondream:latest",
+    "embeddings": "nomic-embed-text:latest"
+  },
+  "report_a": {
+    "equipment_id": "P-101",
+    "input_file": "D:\\sih2\\Soverign-Ai-Workbench-main\\Soverign-Ai-Workbench-main\\demo_data\\inspection\\inspection_report_P101_clean.pdf",
+    "generated_docx": "D:\\sih2\\Soverign-Ai-Workbench-main\\Soverign-Ai-Workbench-main\\outputs\\Approval_Note_task_8704f407.docx",
+    "execution_duration_sec": 49.84,
+    "status": "COMPLETED",
+    "verified": true,
+    "checks": {
+      "equipment_id_extracted": true,
+      "vibration_7_4_extracted": true,
+      "bearing_temp_88_extracted": true,
+      "severity_critical_applied": true,
+      "governing_sop_referenced": true
+    },
+    "findings_in_docx": {
+      "status": "success",
+      "output_path": "D:\\sih2\\Soverign-Ai-Workbench-main\\Soverign-Ai-Workbench-main\\outputs\\Approval_Note_task_8704f407.docx",
+      "filename": "Approval_Note_task_8704f407.docx",
+      "sections_count": 8,
+      "type": "docx"
+    }
+  },
+  "report_b": {
+    "equipment_id": "P-202",
+    "input_file": "D:\\sih2\\Soverign-Ai-Workbench-main\\Soverign-Ai-Workbench-main\\demo_data\\inspection\\inspection_report_P202_clean.pdf",
+    "generated_docx": "D:\\sih2\\Soverign-Ai-Workbench-main\\Soverign-Ai-Workbench-main\\outputs\\Approval_Note_task_c05f11b8.docx",
+    "execution_duration_sec": 32.7,
+    "status": "COMPLETED",
+    "verified": false,
+    "checks": {
+      "equipment_id_extracted": true,
+      "vibration_5_1_extracted": true,
+      "bearing_temp_71_extracted": true,
+      "severity_action_applied": true,
+      "governing_sop_referenced": true
+    }
+  }
+}

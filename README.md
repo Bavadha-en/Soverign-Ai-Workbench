@@ -42,51 +42,107 @@ ConfigIQ is an autonomous sovereign agentic AI workbench engineered for confiden
 
 ---
 
-## 🏗️ Architecture & Execution Flow
+## 🏗️ System Architecture
 
-```text
-                                 +-------------------------+
-                                 |       User Task         |
-                                 +------------+------------+
-                                              |
-                                              v
-                                 +-------------------------+
-                                 |      Agent Planner      |
-                                 | (Structured Plan Graph) |
-                                 +------------+------------+
-                                              |
-                                              v
-      +---------------------------------------------------------------------------------+
-      |                                Tool Executor                                    |
-      |  +-----------------+  +-----------------+  +----------------+  +-------------+  |
-      |  | document_reader |  |     vision      |  |   rag_search   |  |llm_generate |  |
-      |  +-----------------+  +-----------------+  +----------------+  +-------------+  |
-      |  +-----------------+  +-----------------+  +----------------+                   |
-      |  |  code_executor  |  |  pdf_processor  |  |      ocr       |                   |
-      |  +-----------------+  +-----------------+  +----------------+                   |
-      +---------------------------------------+-----------------------------------------+
-                                              |
-                                              v
-                                 +-------------------------+
-                                 |     Verifier Engine     |
-                                 | - Fact Provenance Match |
-                                 | - Physics/Bounds Check  |
-                                 +------------+------------+
-                                              |
-                                              v
-                                 +-------------------------+
-                                 |  Deliverable Generator  |
-                                 | - Word (.docx)          |
-                                 | - Excel (.xlsx)         |
-                                 | - PowerPoint (.pptx)    |
-                                 +------------+------------+
-                                              |
-                                              v
-                                 +-------------------------+
-                                 |  Verified Deliverables  |
-                                 |      (in outputs/)      |
-                                 +-------------------------+
+```mermaid
+graph TB
+    subgraph "Air-Gapped Boundary"
+        UI["React Frontend<br/>Dashboard · Workbench · Chat · Demo"]
+        API["FastAPI Backend<br/>REST API · CORS · Lifespan Events"]
+        
+        subgraph "Agentic State Machine"
+            PLAN["PLAN<br/>Task Decomposition"]
+            ACT["ACT<br/>Tool Execution"]
+            OBSERVE["OBSERVE<br/>Result Parsing"]
+            VERIFY["VERIFY<br/>Fact & Bounds Check"]
+            DELIVER["DELIVER<br/>Generate Deliverables"]
+        end
+
+        subgraph "11 Registered Tools"
+            T1["document_reader"]
+            T2["pdf_processor"]
+            T3["ocr"]
+            T4["vision (Moondream VLM)"]
+            T5["rag_search"]
+            T6["llm_generate"]
+            T7["code_executor (Sandbox)"]
+            T8["verification"]
+            T9["document_generator (.docx)"]
+            T10["excel_generator (.xlsx)"]
+            T11["ppt_generator (.pptx)"]
+        end
+
+        subgraph "RAG Pipeline"
+            KB["Knowledge Base<br/>SOPs · Inspection Guides"]
+            CHUNK["Text Chunker<br/>Sliding Window"]
+            EMBED["Ollama Embeddings<br/>nomic-embed-text"]
+            VS["JSON Vector Store<br/>Cosine Similarity"]
+        end
+
+        subgraph "Model Router"
+            MR["Auto-Router<br/>LLM + Keyword Classification"]
+            LLM1["llama3 (General)"]
+            LLM2["qwen2.5-coder (Coding)"]
+            LLM3["moondream (Vision)"]
+        end
+
+        SANDBOX["Network-Blocked Sandbox<br/>Socket Monkey-Patching"]
+        AUDIT["SHA-256 Audit Trail<br/>Tamper-Evident Ledger"]
+        NETMON["psutil Network Monitor<br/>Live Connection Scanning"]
+    end
+
+    CLOUD["External Networks ⛔"]
+
+    UI --> API
+    API --> PLAN
+    PLAN --> ACT
+    ACT --> OBSERVE
+    OBSERVE --> VERIFY
+    VERIFY -->|retry| ACT
+    VERIFY --> DELIVER
+    ACT --> T1 & T2 & T3 & T4 & T5 & T6 & T7 & T8 & T9 & T10 & T11
+    T5 --> VS
+    KB --> CHUNK --> EMBED --> VS
+    T6 --> MR
+    MR --> LLM1 & LLM2 & LLM3
+    T7 --> SANDBOX
+    API --> AUDIT
+    API --> NETMON
+    NETMON -.->|blocked| CLOUD
+
+    style CLOUD fill:#ef4444,color:#fff,stroke:#ef4444
+    style SANDBOX fill:#1e293b,color:#38bdf8,stroke:#38bdf8
+    style AUDIT fill:#1e293b,color:#10b981,stroke:#10b981
 ```
+
+### Agentic State Machine
+
+The core differentiator is a **5-phase autonomous state machine** that mirrors how a human engineer works:
+
+| Phase | What Happens | Tools Used |
+|-------|-------------|------------|
+| **PLAN** | Decompose user task into a structured tool-call graph | LLM planner |
+| **ACT** | Execute each tool step in sequence | All 11 tools |
+| **OBSERVE** | Parse and aggregate results from tool outputs | Result parser |
+| **VERIFY** | Fact-check claims against SOPs, validate physics bounds | LLM verifier + keyword fallback |
+| **DELIVER** | Generate certified Office documents from verified output | docx/xlsx/pptx generators |
+
+### Sovereignty Enforcement
+
+- **Socket-level blocking**: Sandbox executor monkey-patches Python's `socket` module to prevent any network I/O
+- **psutil live scanning**: Background monitor checks all OS-level TCP/UDP connections for external endpoints
+- **Audit ledger**: Every tool call, LLM inference, and file generation is logged with SHA-256 chain integrity
+- **Zero cloud dependencies**: No OpenAI, no HuggingFace Hub, no pip install at runtime — fully vendored
+
+---
+
+## 🧠 Novelty & Innovation
+
+1. **First sovereign agentic workbench** — Not just a chatbot; a full PLAN→ACT→OBSERVE→VERIFY→DELIVER state machine running entirely offline
+2. **Dual-stage verification** — LLM semantic grounding + keyword provenance matching, with automatic fallback
+3. **Network sovereignty proof** — Real-time psutil packet monitoring with downloadable audit report
+4. **Multi-model auto-routing** — LLM-powered task classification routes to optimal local model (coding/vision/general)
+5. **Industrial-grade deliverables** — Generates production Word/Excel/PowerPoint documents, not just chat responses
 
 ---
 

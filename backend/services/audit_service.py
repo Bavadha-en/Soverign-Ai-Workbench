@@ -46,5 +46,8 @@ class AuditService:
     def get_external_attempts_count(self) -> int:
         return sum(1 for l in self._logs if l.is_external)
 
+    def reset(self):
+        self._logs = []
+
 # Global audit service instance
 audit_service = AuditService()

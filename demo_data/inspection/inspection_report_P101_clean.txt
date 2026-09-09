@@ -1,0 +1,44 @@
+SOVEREIGN INDUSTRIAL PLANT INTEGRITY MANAGEMENT
+EQUIPMENT INSPECTION REPORT — ROTATING MACHINERY
+REPORT NO: IR-2026-P101-0814
+DATE OF INSPECTION: 2026-08-14
+INSPECTION TYPE: Scheduled In-Service Reliability Audit
+
+1. EQUIPMENT IDENTIFICATION
+Equipment Tag: P-101
+Equipment Description: Primary Hydrocarbon Feed Centrifugal Pump
+Service: Hydrocarbon Liquid Transfer (Specific Gravity: 0.82)
+Drive Unit: 415V 3-Phase Induction Motor (45 kW, 1450 RPM)
+Governing Specifications: ISO 10816-3 Class II / API 610 / SOP-M-104
+
+2. OPERATIONAL MEASUREMENTS & SENSOR TELEMETRY
+- Vibration (Outboard Bearing RMS): 7.4 mm/s (CRITICAL: ISO 10816-3 Zone D trip limit is > 7.1 mm/s)
+- Vibration (Drive End Bearing RMS): 4.8 mm/s (WARNING: Zone C range 4.5 - 7.1 mm/s)
+- Bearing Temperature: 88.0 deg C (HIGH: SOP-M-104 max allowable is 75.0 deg C)
+- Mechanical Seal Dynamic Leakage: 14 drops/minute (EXCEEDED: SOP-M-104 limit is <= 5 drops/min)
+- Suction Pressure: 0.32 MPa (Normal operational baseline)
+- Discharge Pressure: 1.85 MPa (Normal operational baseline)
+- Flow Rate: 48.5 m3/h (Operating below 50.0 m3/h design Best Efficiency Point)
+- Differential Head: 62.5 meters
+
+3. PHYSICAL & NON-DESTRUCTIVE EXAMINATION FINDINGS
+- Visual inspection of cartridge mechanical seal reveals significant carbon dusting and liquid droplet accumulation around gland plate.
+- Dynamic weeping rate recorded at 14 drops/minute indicates failure of primary silicon carbide seal face.
+- Outboard bearing exhibits audible high-pitched whining and bearing cap temperature of 88.0 deg C.
+- Internal inspection via suction flange port indicates localized pitting corrosion and cavitation erosion on impeller eye with depth measuring 1.2 mm.
+- Casing exterior shows moderate atmospheric oxidation; ultrasonic thickness scan of volute confirms adequate wall thickness (18.2 mm vs required 14.5 mm).
+
+4. RISK SEVERITY & RISK CLASSIFICATION
+Overall Risk Severity: CRITICAL
+Risk Justification: Vibration level of 7.4 mm/s exceeds ISO 10816-3 Zone D shutdown limit (> 7.1 mm/s), combined with seal failure and bearing overheating at 88.0 deg C, presenting imminent risk of catastrophic shaft seizure or flammable product leakage.
+
+5. INSPECTOR RECOMMENDATIONS & CORRECTIVE ACTIONS
+- IMMEDIATELY initiate emergency operational shutdown and implement Lockout/Tagout (LOTO) per SOP-SAF-001.
+- Decouple pump from motor; inspect flexible coupling elements for angular/radial misalignment.
+- Remove and dismantle mechanical cartridge seal; replace with new API 682 certified Silicon Carbide seal cartridge.
+- Replace drive-end and outboard non-drive-end ball and cylindrical roller bearings.
+- Conduct precision dual-laser alignment achieving angular offset <= 0.05 mm and radial offset <= 0.05 mm.
+- Perform hydrostatic pressure test at 1.5x MAWP for 15 minutes before unit recommissioning per SOP-M-104.
+
+Lead Inspector: K. Vance, Senior Rotating Equipment Specialist
+Signature: [Verified / Stamped: Plant Reliability Directorate]
