@@ -24,10 +24,10 @@ class BaseEmbedder(ABC):
 class LocalFallbackEmbedder(BaseEmbedder):
     """
     Deterministic zero-dependency local embedder for air-gapped environments.
-    Maps terms and subword n-grams into a normalized 256-dimensional vector space.
+    Maps terms and subword n-grams into a normalized 1024-dimensional vector space.
     """
 
-    def __init__(self, dimension: int = 256):
+    def __init__(self, dimension: int = 1024):
         self.dimension = dimension
 
     def _hash_token(self, token: str) -> int:
@@ -38,13 +38,14 @@ class LocalFallbackEmbedder(BaseEmbedder):
 
     def _embed_single(self, text: str) -> List[float]:
         vector = [0.0] * self.dimension
-        tokens = re.findall(r"\b\w+\b", text.lower())
+        tokens = re.findall(r"\b[a-zA-Z0-9_\-]+\b", text.lower())
         if not tokens:
             return vector
 
         for token in tokens:
             idx = self._hash_token(token)
-            vector[idx] += 1.0
+            weight = 2.5 if any(c.isdigit() for c in token) else 1.0
+            vector[idx] += weight
 
         # L2 Normalize
         norm = math.sqrt(sum(v * v for v in vector))
