@@ -7,6 +7,7 @@ from backend.api.documents import router as documents_router
 from backend.api.knowledge import router as knowledge_router
 from backend.api.logs import router as logs_router
 from backend.api.tasks import router as tasks_router
+from backend.api.tools import router as tools_router
 from backend.models.schemas import HealthResponse
 
 app = FastAPI(
@@ -34,6 +35,7 @@ app.include_router(documents_router)
 app.include_router(knowledge_router)
 app.include_router(tasks_router)
 app.include_router(chat_router)
+app.include_router(tools_router)
 app.include_router(logs_router)
 
 
@@ -60,4 +62,3 @@ async def health_check():
         environment="on-premise / air-gapped",
         timestamp=datetime.now(timezone.utc).isoformat()
     )
-

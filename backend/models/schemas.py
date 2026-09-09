@@ -119,3 +119,106 @@ class NetworkStatusResponse(BaseModel):
     external_connections: int = Field(0, json_schema_extra={"example": 0})
     status: str = Field("LOCAL_ONLY", json_schema_extra={"example": "LOCAL_ONLY"})
 
+# --- Phase 6 & Phase 7 Tools & Sandbox Schemas ---
+
+class ReadFileInput(BaseModel):
+    path: str = Field(..., json_schema_extra={"example": "outputs/storage/doc.txt"})
+
+class ReadFileOutput(BaseModel):
+    success: bool
+    path: str
+    content: Optional[str] = None
+    file_size: Optional[int] = None
+    error: Optional[str] = None
+
+class WriteFileInput(BaseModel):
+    path: str = Field(..., json_schema_extra={"example": "outputs/output.txt"})
+    content: str = Field(..., json_schema_extra={"example": "Sample content"})
+
+class WriteFileOutput(BaseModel):
+    success: bool
+    path: str
+    bytes_written: int = 0
+    error: Optional[str] = None
+
+class ExtractPDFInput(BaseModel):
+    file_path: str = Field(..., json_schema_extra={"example": "outputs/storage/report.pdf"})
+
+class ExtractPDFOutput(BaseModel):
+    success: bool
+    file_path: str
+    pages: int = 0
+    text: str = ""
+    text_extracted: bool = False
+    ocr_pages: List[int] = Field(default_factory=list)
+    error: Optional[str] = None
+
+class PerformOCRInput(BaseModel):
+    image_path: str = Field(..., json_schema_extra={"example": "outputs/storage/page2.png"})
+
+class PerformOCROutput(BaseModel):
+    success: bool
+    image_path: str
+    text: str = ""
+    error: Optional[str] = None
+
+class SearchKnowledgeInput(BaseModel):
+    query: str = Field(..., json_schema_extra={"example": "corroded valve replacement procedure"})
+    top_k: int = Field(5, json_schema_extra={"example": 5})
+
+class SearchKnowledgeOutput(BaseModel):
+    success: bool
+    query: str
+    results: List[Dict[str, Any]] = Field(default_factory=list)
+    error: Optional[str] = None
+
+class ExecutePythonInput(BaseModel):
+    code: str = Field(..., json_schema_extra={"example": "print(2 + 2)"})
+    timeout_sec: int = Field(30, json_schema_extra={"example": 30})
+
+class ExecutePythonOutput(BaseModel):
+    success: bool
+    stdout: str = ""
+    stderr: str = ""
+    exit_code: int = 0
+    duration_ms: float = 0.0
+    isolation_mode: str = "docker"
+    error: Optional[str] = None
+
+class CreateWordInput(BaseModel):
+    output_path: str = Field("outputs/Approval_Note.docx", json_schema_extra={"example": "outputs/Approval_Note.docx"})
+    title: str = Field(..., json_schema_extra={"example": "APPROVAL NOTE"})
+    sections: Dict[str, str] = Field(..., json_schema_extra={"example": {"1. Background": "Details..."}})
+    subject: Optional[str] = Field(None, json_schema_extra={"example": "Valve Maintenance Request"})
+
+class CreateWordOutput(BaseModel):
+    success: bool
+    output_path: str
+    file_size: int = 0
+    error: Optional[str] = None
+
+class ApprovalNoteInput(BaseModel):
+    output_path: str = Field("outputs/Approval_Note.docx", json_schema_extra={"example": "outputs/Approval_Note.docx"})
+    title: str = Field("CONFIDENTIAL APPROVAL NOTE", json_schema_extra={"example": "CONFIDENTIAL APPROVAL NOTE"})
+    subject: str = Field("Equipment Maintenance & Repair Approval", json_schema_extra={"example": "Equipment Maintenance & Repair Approval"})
+    background: str = Field(..., json_schema_extra={"example": "Routine plant inspection..."})
+    inspection_findings: str = Field(..., json_schema_extra={"example": "Corrosion detected..."})
+    technical_assessment: str = Field(..., json_schema_extra={"example": "Pressure limit exceeded..."})
+    applicable_sop: str = Field(..., json_schema_extra={"example": "SOP-MECH-44..."})
+    recommended_action: str = Field(..., json_schema_extra={"example": "Replace valve..."})
+    approval_requested: str = Field(..., json_schema_extra={"example": "Approval for procurement..."})
+
+class CreateExcelInput(BaseModel):
+    output_path: str = Field("outputs/Report.xlsx", json_schema_extra={"example": "outputs/Report.xlsx"})
+    data: List[Dict[str, Any]] = Field(..., json_schema_extra={"example": [{"ID": 1, "Item": "Valve", "Status": "Corroded"}]})
+    sheet_name: str = Field("Sheet1", json_schema_extra={"example": "Sheet1"})
+
+class CreateExcelOutput(BaseModel):
+    success: bool
+    output_path: str
+    rows_written: int = 0
+    file_size: int = 0
+    error: Optional[str] = None
+
+
+
