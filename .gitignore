@@ -13,7 +13,9 @@ ENV/
 node_modules/
 frontend/node_modules/
 dist/
-frontend/dist/
+# The built console IS shipped: the backend serves it, so a demo machine
+# needs no Node toolchain. Rebuild with 'npm run build' after frontend edits.
+!frontend/dist/
 .vite/
 npm-debug.log*
 yarn-debug.log*

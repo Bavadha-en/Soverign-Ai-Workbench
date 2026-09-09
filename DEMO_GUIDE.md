@@ -27,7 +27,7 @@ ollama list
 ```
 
 ### Step 2: Start the FastAPI Sovereign Backend
-Open a terminal in `D:\sih2\Soverign-Ai-Workbench-main\Soverign-Ai-Workbench-main`:
+Open a terminal in the repository root:
 ```powershell
 python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
 ```
@@ -36,7 +36,7 @@ python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
 - Audit HTML Report: `http://localhost:8000/audit/report`
 
 ### Step 3: Start the React Modern Frontend
-Open a second terminal in `D:\sih2\Soverign-Ai-Workbench-main\Soverign-Ai-Workbench-main\frontend`:
+Open a second terminal in the `frontend` directory:
 ```powershell
 npm run dev
 ```

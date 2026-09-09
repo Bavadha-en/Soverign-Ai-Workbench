@@ -13,11 +13,20 @@ client = TestClient(app)
 
 
 def test_root():
-    response = client.get("/")
+    # `/` serves the built console; the identity payload lives at /api.
+    response = client.get("/api")
     assert response.status_code == 200
     data = response.json()
     assert data["system"] == "ConfigIQ"
     assert data["mode"] == "100% Offline / Air-Gapped"
+
+
+def test_console_served_at_root():
+    """A demo machine should reach the UI on the backend port with no Node tooling."""
+    response = client.get("/")
+    assert response.status_code == 200
+    assert "text/html" in response.headers.get("content-type", "")
+    assert "<div id=\"root\">" in response.text
 
 
 def test_health_check():

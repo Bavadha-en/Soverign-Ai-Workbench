@@ -1,29 +1,43 @@
 # ConfigIQ - Sovereign On-Premise Agentic AI Workbench
 # Core Dependencies (Air-Gapped & Local Only)
+#
+# Every package below is imported by the backend at start-up or during a run.
+# Verified against a working install with:
+#   python -c "import backend.main"
 
+# --- API layer ---
 fastapi>=0.100.0
 uvicorn>=0.22.0
 pydantic>=2.0.0
 pydantic-settings>=2.0.0
 python-multipart>=0.0.6
 
-# Document Processing & OCR
-PyMuPDF>=1.23.0
-pytesseract>=0.3.10
+# --- Document processing ---
+pypdf>=4.0.0
 Pillow>=10.0.0
 
-# HTTP Client (Ollama API)
+# --- OCR (offline, no external service) ---
+# RapidOCR ships ONNX models locally; it replaced pytesseract so the deployment
+# no longer depends on a system-wide Tesseract binary.
+rapidocr-onnxruntime>=1.3.0
+onnxruntime>=1.16.0
+
+# --- Computer vision (P&ID symbol detection and topology extraction) ---
+opencv-python>=4.8.0
+numpy>=1.24.0
+
+# --- HTTP client (Ollama API) ---
 httpx>=0.24.0
 
-# System Monitoring (Network Sovereignty)
+# --- System monitoring (network sovereignty) ---
 psutil>=5.9.0
 
-# Document Generation
+# --- Document generation ---
 python-docx>=0.8.11
 openpyxl>=3.1.0
 python-pptx>=0.6.21
 
-# Testing & Utilities
+# --- Testing & utilities ---
 pytest>=7.4.0
 pytest-asyncio>=0.21.0
 python-dotenv>=1.0.0

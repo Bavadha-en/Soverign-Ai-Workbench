@@ -8,7 +8,19 @@ import numpy as np
 from PIL import Image
 
 
-DEFAULT_ZIP_PATH = "d:/sih2/Eng_Diagrams-master.zip"
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# Source dataset used to build symbol templates. Optional: the pre-built
+# templates below are shipped with the repository, so a clone works without it.
+DEFAULT_ZIP_PATH = os.getenv(
+    "ENG_DIAGRAMS_ZIP",
+    os.path.join(_REPO_ROOT, "datasets", "Eng_Diagrams-master.zip"),
+)
+
+# Templates committed with the repo so symbol detection works on a fresh clone.
+BUNDLED_TEMPLATES_PATH = os.path.join(_REPO_ROOT, "assets", "eng_diagram_templates.npz")
+
+# Locally rebuilt templates take priority over the bundled copy.
 CACHE_PATH = os.path.join(os.getcwd(), "outputs", "storage", "eng_diagram_templates.npz")
 
 
@@ -30,13 +42,17 @@ class PIDSymbolDetector:
     def _load_or_build_templates(self) -> None:
         """Load cached templates or compute them from Eng_Diagrams-master.zip."""
         os.makedirs(os.path.dirname(self.cache_path), exist_ok=True)
-        if os.path.exists(self.cache_path):
+
+        # Locally built cache first, then the templates shipped with the repo.
+        for candidate in (self.cache_path, BUNDLED_TEMPLATES_PATH):
+            if not os.path.exists(candidate):
+                continue
             try:
-                data = np.load(self.cache_path, allow_pickle=True)
+                data = np.load(candidate, allow_pickle=True)
                 self.class_centroids = {k: data[k] for k in data.files}
                 return
             except Exception:
-                pass
+                continue
 
         # Build from dataset zip
         if not os.path.exists(self.zip_path):
@@ -191,36 +207,108 @@ class PIDSymbolDetector:
             if crop.size == 0:
                 continue
 
+            def _level(c: float) -> str:
+                if c >= 0.85:
+                    return "HIGH"
+                if c >= 0.65:
+                    return "MEDIUM"
+                if c >= 0.45:
+                    return "LOW"
+                return "UNKNOWN"
+
             # Check for circular instrument bubble / sensor
             if circularity >= 0.70 and 0.8 <= aspect <= 1.25 and bw >= 20:
+                conf = round(min(0.98, float(circularity) + 0.15), 3)
                 detected_symbols.append({
                     "symbol_type": "Sensor",
                     "category": "instrument_bubble",
                     "bbox": [int(bx), int(by), int(bw), int(bh)],
-                    "confidence": round(min(0.98, float(circularity) + 0.15), 3),
+                    "confidence": conf,
+                    "confidence_level": _level(conf),
                     "aspect_ratio": round(aspect, 2),
+                    "detector": "deterministic_cv",
+                    "visual_evidence": f"Circular instrument bubble contour (circularity={circularity:.2f}, aspect={aspect:.2f})",
                     "source": "deterministic"
                 })
                 continue
 
-            # Check for valve (two opposing triangles / hourglass shape, aspect between 1.2 and 3.0 or 0.33 to 0.8)
-            # Match against known exemplar templates
+            # Check for pump symbol (circle with tangential line/nozzle or inscribed triangle, area >= 400)
+            if circularity >= 0.55 and 0.8 <= aspect <= 1.3 and bw >= 32 and bh >= 32:
+                conf = round(min(0.92, float(circularity) + 0.20), 3)
+                detected_symbols.append({
+                    "symbol_type": "Centrifugal Pump",
+                    "category": "pump",
+                    "bbox": [int(bx), int(by), int(bw), int(bh)],
+                    "confidence": conf,
+                    "confidence_level": _level(conf),
+                    "aspect_ratio": round(aspect, 2),
+                    "detector": "deterministic_cv",
+                    "visual_evidence": f"Centrifugal pump circular casing contour (circularity={circularity:.2f}, dimension={bw}x{bh})",
+                    "source": "deterministic"
+                })
+                continue
+
+            # Check for vessel / column (large elongated cylindrical contour)
+            if area > 1200 and (aspect >= 1.8 or aspect <= 0.55):
+                conf = 0.85
+                detected_symbols.append({
+                    "symbol_type": "Pressure Vessel / Column",
+                    "category": "vessel",
+                    "bbox": [int(bx), int(by), int(bw), int(bh)],
+                    "confidence": conf,
+                    "confidence_level": _level(conf),
+                    "aspect_ratio": round(aspect, 2),
+                    "detector": "deterministic_cv",
+                    "visual_evidence": f"Elongated vessel enclosure contour (aspect={aspect:.2f}, area={int(area)})",
+                    "source": "deterministic"
+                })
+                continue
+
+            # Match against known exemplar templates / Eng_Diagrams dataset
             classification = self.classify_isolated_symbol(crop, confidence_threshold=0.50)
             pred_class = classification.get("class", "UNKNOWN")
             conf = classification.get("confidence", 0.0)
 
-            # Heuristic geometric sanity check
-            is_valve_candidate = any(k in pred_class.lower() for k in ["valve", "db&b", "esdv"])
-            is_reducer_candidate = "reducer" in pred_class.lower()
-            is_arrow_candidate = "arrow" in pred_class.lower()
+            # Heuristic geometric sanity check & categorization
+            p_lower = pred_class.lower()
+            is_valve = any(k in p_lower for k in ["valve", "db&b", "esdv", "psv", "prv"])
+            is_pump = "pump" in p_lower
+            is_vessel = any(k in p_lower for k in ["vessel", "tank", "drum", "column"])
+            is_hex = any(k in p_lower for k in ["exchanger", "cooler", "heater", "condenser"])
+            is_filter = any(k in p_lower for k in ["filter", "strainer"])
+            is_motor = any(k in p_lower for k in ["motor", "compressor", "turbine"])
+            is_reducer = "reducer" in p_lower
+            is_arrow = "arrow" in p_lower
 
-            if pred_class != "UNKNOWN":
+            if is_valve:
+                cat = "valve"
+            elif is_pump:
+                cat = "pump"
+            elif is_vessel:
+                cat = "vessel"
+            elif is_hex:
+                cat = "heat_exchanger"
+            elif is_filter:
+                cat = "filter"
+            elif is_motor:
+                cat = "motor"
+            elif is_reducer:
+                cat = "reducer"
+            elif is_arrow:
+                cat = "flow_arrow"
+            else:
+                cat = "component"
+
+            if pred_class != "UNKNOWN" and conf >= 0.50:
                 detected_symbols.append({
                     "symbol_type": pred_class,
-                    "category": "valve" if is_valve_candidate else ("reducer" if is_reducer_candidate else ("flow_arrow" if is_arrow_candidate else "component")),
+                    "category": cat,
                     "bbox": [int(bx), int(by), int(bw), int(bh)],
                     "confidence": conf,
+                    "confidence_level": _level(conf),
                     "aspect_ratio": round(aspect, 2),
+                    "detector": "deterministic_cv",
+                    "visual_evidence": f"Template correlation match to canonical {pred_class} exemplar (score={conf:.2f})",
                     "source": "deterministic"
                 })
 
@@ -244,5 +332,17 @@ class PIDSymbolDetector:
 
         return filtered
 
+    def detect_symbols(
+        self,
+        image: Union[np.ndarray, str],
+        thresh: Optional[np.ndarray] = None,
+        min_size: int = 14,
+        max_size: int = 160,
+        **kwargs
+    ) -> List[Dict[str, Any]]:
+        """Convenience alias for detect_symbols_in_diagram."""
+        return self.detect_symbols_in_diagram(image, min_size=min_size, max_size=max_size)
+
 
 pid_symbol_detector = PIDSymbolDetector()
+

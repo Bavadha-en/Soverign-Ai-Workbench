@@ -67,9 +67,9 @@ app.include_router(tools_router)
 ollama_probe = OllamaLLMProvider()
 
 
-@app.get("/", tags=["System"])
+@app.get("/api", tags=["System"])
 async def root():
-    """Root endpoint detailing system identity and status."""
+    """System identity and status. `/` serves the console when it has been built."""
     return {
         "system": "ConfigIQ",
         "name": "Sovereign On-Premise Agentic AI Workbench",
@@ -201,3 +201,34 @@ async def download_output_file(filename: str):
         filename=os.path.basename(requested_path)
     )
 
+
+
+# ---------------------------------------------------------------------------
+# Frontend hosting
+#
+# Mounted last so it never shadows an API route. When the console has been
+# built, the whole product is reachable from a single origin — which means a
+# demo machine needs Python and Ollama only, no Node toolchain.
+# ---------------------------------------------------------------------------
+
+_FRONTEND_DIST = os.path.join(os.getcwd(), "frontend", "dist")
+
+if os.path.isdir(_FRONTEND_DIST):
+    from fastapi.staticfiles import StaticFiles
+
+    class SPAStaticFiles(StaticFiles):
+        """Serves index.html for client-side routes instead of returning 404."""
+
+        async def get_response(self, path: str, scope):
+            response = await super().get_response(path, scope)
+            if response.status_code == 404:
+                return await super().get_response("index.html", scope)
+            return response
+
+    app.mount("/", SPAStaticFiles(directory=_FRONTEND_DIST, html=True), name="console")
+    logger.info("Serving built console from %s", _FRONTEND_DIST)
+else:
+    logger.warning(
+        "No built console at %s — run 'npm run build' in frontend/ to serve the UI from this port.",
+        _FRONTEND_DIST,
+    )

@@ -50,14 +50,32 @@ def check_ollama() -> bool:
     return False
 
 
+# Import name -> pip package, for every module the backend needs at start-up.
+REQUIRED_MODULES = {
+    "fastapi": "fastapi",
+    "uvicorn": "uvicorn",
+    "httpx": "httpx",
+    "pydantic": "pydantic",
+    "PIL": "Pillow",
+    "docx": "python-docx",
+    "openpyxl": "openpyxl",
+    "pptx": "python-pptx",
+    "psutil": "psutil",
+    "pypdf": "pypdf",
+    "cv2": "opencv-python",
+    "numpy": "numpy",
+    "rapidocr_onnxruntime": "rapidocr-onnxruntime",
+}
+
+
 def check_dependencies() -> list:
-    """Check critical Python dependencies."""
+    """Report any missing Python dependency by its pip name."""
     missing = []
-    for pkg in ["fastapi", "uvicorn", "httpx", "pydantic", "PIL", "docx", "openpyxl", "pptx"]:
+    for module, package in REQUIRED_MODULES.items():
         try:
-            __import__(pkg)
+            __import__(module)
         except ImportError:
-            missing.append(pkg)
+            missing.append(package)
     return missing
 
 
@@ -110,13 +128,25 @@ def main():
         threading.Thread(target=open_browser, daemon=True).start()
 
     # Start uvicorn
+    import asyncio
     import uvicorn
+
+    # On Windows the default ProactorEventLoop tears down its accept loop when a
+    # client resets a connection mid-accept (WinError 64). The process survives
+    # but silently stops accepting requests, which during a demo looks like the
+    # backend has died. The selector loop does not have that failure mode, and
+    # nothing here needs asyncio subprocesses (the sandbox uses subprocess.run).
+    if sys.platform == "win32":
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+        logger.info("Using selector event loop for stable connection handling")
+
     uvicorn.run(
         "backend.main:app",
         host=args.host,
         port=args.port,
         reload=args.reload,
         log_level="info",
+        loop="asyncio",
     )
 
 
