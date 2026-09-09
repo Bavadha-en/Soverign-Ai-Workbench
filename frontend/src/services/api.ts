@@ -10,6 +10,7 @@ import type {
   HealthResponse,
   KnowledgeIngestResponse,
   KnowledgeSearchResponse,
+  ModelRegistryResponse,
   NetworkStatus,
   NetworkTelemetry,
   SampleDocumentList,
@@ -101,6 +102,10 @@ class ApiService {
 
   getSystemStats(): Promise<SystemStats> {
     return this.request<SystemStats>('/stats', {}, QUICK_TIMEOUT_MS);
+  }
+
+  getModelRegistry(): Promise<ModelRegistryResponse> {
+    return this.request<ModelRegistryResponse>('/chat/registry', {}, QUICK_TIMEOUT_MS);
   }
 
   /* ---- agent ---- */

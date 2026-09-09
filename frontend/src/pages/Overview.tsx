@@ -49,25 +49,6 @@ const WORKFLOWS = [
   },
 ];
 
-const COMPLIANCE_CHECKS = [
-  {
-    label: 'No cloud AI providers configured',
-    detail: 'Inference is served by the local Ollama runtime only.',
-  },
-  {
-    label: 'Sandbox blocks socket creation',
-    detail: 'Generated Python runs in a subprocess with networking patched out.',
-  },
-  {
-    label: 'Every action is written to the ledger',
-    detail: 'Tool calls, inferences and file writes are hash-chained.',
-  },
-  {
-    label: 'Documents never leave the host',
-    detail: 'Uploads, embeddings and outputs stay on local disk.',
-  },
-];
-
 export const Overview: React.FC<OverviewProps> = ({
   health,
   network,
@@ -200,39 +181,6 @@ export const Overview: React.FC<OverviewProps> = ({
 
         <RuntimeHealth health={health} />
       </div>
-
-      <Card>
-        <CardHead
-          icon={<ShieldCheck size={16} />}
-          title="Compliance posture"
-          subtitle="What an auditor can verify about this deployment right now."
-          actions={
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm"
-              onClick={() => onNavigate('sovereignty')}
-            >
-              Open evidence
-              <ArrowRight size={13} />
-            </button>
-          }
-        />
-        <CardBody>
-          <div className="grid grid-auto">
-            {COMPLIANCE_CHECKS.map((check) => (
-              <div key={check.label} className="panel row-top gap-10">
-                <CheckCircle2 size={15} style={{ color: 'var(--success-600)', flexShrink: 0, marginTop: 1 }} />
-                <div>
-                  <p className="text-sm strong" style={{ fontWeight: 550 }}>
-                    {check.label}
-                  </p>
-                  <p className="text-xs muted">{check.detail}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardBody>
-      </Card>
     </>
   );
 };

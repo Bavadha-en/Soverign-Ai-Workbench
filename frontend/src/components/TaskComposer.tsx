@@ -56,13 +56,6 @@ const PRESETS: Preset[] = [
   },
 ];
 
-const FALLBACK_SAMPLES: Array<Pick<SampleDocument, 'filename' | 'title'>> = [
-  { filename: 'metal_nut_surface_scratch.png', title: 'Nut — surface scratch' },
-  { filename: 'metal_nut_bent_deformation.png', title: 'Nut — bent deformation' },
-  { filename: 'cable_insulation_cut.png', title: 'Cable — insulation cut' },
-  { filename: 'structural_surface_crack.png', title: 'Structure — surface crack' },
-  { filename: 'scanned_inspection_sheet.png', title: 'Scanned inspection sheet' },
-];
 
 interface TaskComposerProps {
   onRun: (task: string, documentIds: string[]) => void;
@@ -80,9 +73,7 @@ export const TaskComposer: React.FC<TaskComposerProps> = ({
   const toast = useToast();
   const [task, setTask] = useState(PRESETS[0].task);
   const [attachments, setAttachments] = useState<DocumentUploadResponse[]>([]);
-  const [samples, setSamples] = useState<Array<Pick<SampleDocument, 'filename' | 'title'>>>(
-    FALLBACK_SAMPLES,
-  );
+  const [samples, setSamples] = useState<Array<Pick<SampleDocument, 'filename' | 'title'>>>([]);
   const [busyFile, setBusyFile] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -99,7 +90,8 @@ export const TaskComposer: React.FC<TaskComposerProps> = ({
         if (!cancelled && response.samples?.length) setSamples(response.samples);
       })
       .catch(() => {
-        /* the bundled fallback list is good enough when the endpoint is unavailable */
+        // No samples listed means the section stays hidden rather than showing
+        // files that may not exist on this host.
       });
     return () => {
       cancelled = true;
@@ -278,6 +270,7 @@ export const TaskComposer: React.FC<TaskComposerProps> = ({
               </div>
             )}
 
+            {samples.length > 0 && (
             <div className="panel">
               <p className="text-xs muted" style={{ marginBottom: 8 }}>
                 Sample inspection assets — one click, no file dialog
@@ -296,6 +289,7 @@ export const TaskComposer: React.FC<TaskComposerProps> = ({
                 ))}
               </div>
             </div>
+            )}
           </div>
 
           <div className="row-between" style={{ paddingTop: 2 }}>
