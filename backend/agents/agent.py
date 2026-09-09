@@ -80,6 +80,8 @@ class ConfigIQAgent:
 
                 # Execution attempt with retry loop
                 step_success = False
+                step_res: Dict[str, Any] = {}
+                step_data["status"] = "running"
                 while not step_success and state.can_retry(action):
                     step_res = await self.executor.execute_step(step_idx, step_data, state)
 
@@ -92,6 +94,7 @@ class ConfigIQAgent:
                             retries = state.increment_retry_count(action)
                             state.add_trace(f"[RETRY {retries}/3] Retrying calculation step '{action}' due to verification note: {v_res.get('reason')}")
                             # Adjust code for retry if needed
+                            step_data["status"] = "retried"
                             if retries >= state.max_retries:
                                 break
                             continue
@@ -108,6 +111,12 @@ class ConfigIQAgent:
                     if not step_success and not state.can_retry(action):
                         state.add_trace(f"[ERROR] Max retries exceeded for step '{action}'.")
                         break
+
+                # Record the outcome on the plan so the UI reflects real progress
+                # instead of leaving every step marked pending.
+                step_data["status"] = "completed" if step_success else "failed"
+                if not step_success:
+                    step_data["error"] = step_res.get("error") or "Step did not complete successfully"
 
             # PHASE 4: FINAL DELIVERABLE & WRAP-UP
             state.set_status(AgentStatus.COMPLETED)
@@ -148,41 +157,100 @@ class ConfigIQAgent:
 
         return state
 
+    @staticmethod
+    def _calculation_verdict(state: AgentState) -> str:
+        """
+        Describe what the verifier actually concluded. The summary text must never
+        assert a pass the verifier did not give.
+        """
+        summary: Dict[str, Any] = {}
+        for value in (state.verification_results or {}).values():
+            if isinstance(value, dict) and "status" in value:
+                summary = value
+                break
+
+        verdict = str(summary.get("status", "")).upper()
+        reason = summary.get("reason")
+
+        if verdict == "FAILED":
+            detail = reason or "a physical bounds check did not pass"
+            return f"**Not accepted** — {detail} This result must not be issued."
+        if verdict == "REVIEW":
+            review_notes = [
+                claim.get("evidence")
+                for claim in summary.get("claims", [])
+                if str(claim.get("status", "")).upper() == "NEEDS_REVIEW" and claim.get("evidence")
+            ]
+            detail = review_notes[0] if review_notes else "a value fell outside its expected band."
+            return f"**Requires engineer review** — {detail}"
+        if verdict == "PASSED":
+            return "Passed physical range and numerical validity checks."
+        return "No calculation verification was recorded for this run."
+
     def _finalize_output(self, state: AgentState) -> None:
         """Construct user-facing final output text summarizing agent findings."""
         if "execute_in_sandbox" in state.tool_results:
             sandbox_res = state.tool_results["execute_in_sandbox"]
             stdout = sandbox_res.get("stdout", "")
+            exit_code = sandbox_res.get("exit_code", 0)
             files_md = ""
             if state.generated_files:
                 files_list = ", ".join(f"`{os.path.basename(f)}`" for f in state.generated_files)
                 files_md = f"\n- **Generated Deliverables**: {files_list}"
             state.final_output = (
-                f"### Engineering Calculation Verified Result\n\n"
+                f"### Engineering Calculation Result\n\n"
                 f"```text\n{stdout.strip()}\n```\n\n"
-                f"- **Execution Status**: Success (Exit code: 0)\n"
+                f"- **Execution Status**: {'Success' if exit_code == 0 else 'Failed'} "
+                f"(Exit code: {exit_code})\n"
                 f"- **Sandbox Environment**: Isolated local Python runtime\n"
-                f"- **Verification**: Passed physical range and numerical validity checks.{files_md}"
+                f"- **Verification**: {self._calculation_verdict(state)}{files_md}"
             )
-        elif state.generated_files or state.retrieved_context:
+        elif state.generated_files or state.retrieved_context or state.tool_results:
             file_names = [os.path.basename(f) for f in state.generated_files]
             files_str = ", ".join(f"`{f}`" for f in file_names) if file_names else "N/A"
 
+            # Check for P&ID context and direct QA
+            vis_res = (
+                state.tool_results.get("analyze_scanned_pages") or
+                state.tool_results.get("analyze_pid_diagram") or
+                state.tool_results.get("pid_analyzer") or {}
+            )
+            pid_ctx = (
+                vis_res.get("pid_context")
+                if (isinstance(vis_res, dict) and "pid_context" in vis_res)
+                else (vis_res if (isinstance(vis_res, dict) and "equipment" in vis_res) else None)
+            )
+
+            direct_answer = ""
+            if pid_ctx and isinstance(pid_ctx, dict):
+                qa = pid_ctx.get("engineering_qa", {})
+                if qa and qa.get("answer"):
+                    direct_answer = f"\n\n**Direct Answer**: {qa['answer']}\n"
+
             # 1. Visual Evidence
-            vis_res = state.tool_results.get("analyze_scanned_pages", {})
             vis_lines = []
-            if vis_res and vis_res.get("observations"):
+            if isinstance(vis_res, dict) and vis_res.get("observations"):
                 vis_lines = [f"- {o}" for o in vis_res["observations"]]
+            elif pid_ctx and isinstance(pid_ctx, dict):
+                for v in pid_ctx.get("valves", [])[:4]:
+                    vis_lines.append(f"- Valve symbol: {v.get('label', v.get('id'))}")
+                for eq in pid_ctx.get("equipment", [])[:3]:
+                    vis_lines.append(f"- Equipment: {eq.get('label', eq.get('id'))}")
             vis_section = "\n".join(vis_lines) if vis_lines else "- No anomalous visual features detected."
 
             # 2. Document Evidence
             doc_res = state.tool_results.get("extract_document", {})
-            doc_text = doc_res.get("text", "")
+            doc_text = doc_res.get("text", "") if isinstance(doc_res, dict) else ""
             doc_snippet = doc_text[:400].strip() if doc_text else "Document parsed from local storage."
 
             # 3. Model Inference & SOP
-            llm_res = state.tool_results.get("analyze_findings", {})
-            llm_summary = llm_res.get("text", "") if llm_res else ""
+            llm_res = (
+                state.tool_results.get("analyze_findings") or
+                state.tool_results.get("grounded_engineering_reasoning") or
+                state.model_outputs.get("analyze_findings") or
+                state.model_outputs.get("grounded_engineering_reasoning") or {}
+            )
+            llm_summary = llm_res.get("text", "") if isinstance(llm_res, dict) else ""
             if not llm_summary:
                 llm_summary = "Technical evaluation completed against local SOP requirements."
 
@@ -198,11 +266,12 @@ class ConfigIQAgent:
             sources_section = "\n".join(sources_lines) if sources_lines else "- Local Knowledge Base SOP Repository"
 
             state.final_output = (
-                f"### Sovereign Industrial Inspection & Approval Review\n\n"
+                f"### Sovereign Technical Assessment & Answer\n\n"
+                f"**User Objective**: {state.user_request}{direct_answer}\n"
                 f"**TASK ID**: `{state.task_id}` | **AIR-GAP STATUS**: Verified Local-Only\n\n"
-                f"#### 1. VISUAL EVIDENCE (VLM / Moondream)\n{vis_section}\n\n"
+                f"#### 1. VISUAL EVIDENCE (VLM / Moondream / CV)\n{vis_section}\n\n"
                 f"#### 2. DOCUMENT EVIDENCE (OCR / Inspection Report)\n> {doc_snippet}\n\n"
-                f"#### 3. MODEL INFERENCE & TECHNICAL ASSESSMENT\n{llm_summary[:800]}\n\n"
+                f"#### 3. MODEL INFERENCE & TECHNICAL ASSESSMENT\n{llm_summary[:1200]}\n\n"
                 f"#### 4. RETRIEVED GOVERNING SOP SOURCES\n{sources_section}\n\n"
                 f"#### 5. DELIVERABLES & APPROVAL\n"
                 f"- **Deliverable Document**: {files_str}\n"

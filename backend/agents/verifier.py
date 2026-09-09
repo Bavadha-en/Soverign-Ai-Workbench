@@ -179,17 +179,37 @@ class Verifier:
                     break
 
             if match_ratio >= 0.4 or evidence_snippet is not None:
-                status = FactVerificationStatus.SUPPORTED
+                # Classify granular engineering provenance
+                is_topology_match = any(t in claim_lower for t in ["connect", "upstream", "downstream", "line l-", "piping line", "piping connection", "signal line", "traces"])
+                is_ocr_match = any(t in claim_lower for t in ["tag", "pt-", "pi-", "fo-", "p-", "v-", "cv-", "spg-", "spn-", "spa-", "spd-", "cbj-"]) or "ocr" in all_context_text
+                is_image_match = any(w in claim_lower for w in ["valve", "pump", "symbol", "diagram", "dashed", "junction", "triangle", "circle"])
+                is_rag_match = any(s in claim_lower for s in ["sop", "iso", "api", "standard", "code", "procedure", "asme", "limit", "criterion"]) or (evidence_snippet and "sop" in matched_source_doc.lower())
+
+                if is_topology_match and ("line" in all_context_text or "connection" in all_context_text):
+                    status = FactVerificationStatus.SUPPORTED_BY_TOPOLOGY
+                elif is_ocr_match and ("ocr" in all_context_text or re.search(r"[A-Z]{1,4}-[0-9]{2,5}", claim_clean)):
+                    status = FactVerificationStatus.SUPPORTED_BY_OCR
+                elif is_rag_match or "retrieved" in matched_source_doc.lower() or "sop" in matched_source_doc.lower():
+                    status = FactVerificationStatus.SUPPORTED_BY_RAG
+                elif is_image_match:
+                    status = FactVerificationStatus.SUPPORTED_BY_IMAGE
+                else:
+                    status = FactVerificationStatus.SUPPORTED
+
                 confidence = round(max(0.75, min(0.99, match_ratio + 0.3)), 2)
                 supported_count += 1
-            elif match_ratio > 0.15:
+            elif any(w in claim_lower for w in ["recommend", "infer", "suggest", "indicates", "conclude", "consistent with", "assumption", "hypothes"]):
+                status = FactVerificationStatus.MODEL_INFERENCE
+                confidence = 0.70
+            elif match_ratio > 0.15 or "unable to" in claim_lower or "insufficient" in claim_lower:
                 status = FactVerificationStatus.NEEDS_REVIEW
                 confidence = 0.55
                 needs_review_count += 1
             else:
                 status = FactVerificationStatus.UNSUPPORTED
-                confidence = 0.2
+                confidence = 0.20
                 unsupported_count += 1
+
 
             verified_claims.append(FactClaimVerification(
                 claim=claim_clean,
@@ -223,68 +243,213 @@ class Verifier:
             notes=notes
         )
 
+    # Operating envelopes for quantities the verifier can recognise in stdout.
+    # "hard" bounds are physically impossible to leave, so breaching one fails the
+    # step and triggers a retry. "typical" is the band a healthy machine sits in;
+    # a value inside "hard" but outside "typical" is possible yet implausible, so
+    # it is escalated for human review rather than silently accepted.
+    QUANTITY_RULES: Dict[str, Dict[str, Any]] = {
+        "efficiency": {
+            "hard": (0.0, 100.0),
+            "typical": (20.0, 95.0),
+            "unit": "%",
+            "typical_reason": "a centrifugal pump operating normally sits between 20% and 95%",
+        },
+    }
+
+    @staticmethod
+    def _extract_labelled_values(stdout: str, keyword: str, unit: str = "") -> List[tuple]:
+        """
+        Pull out `<label>: <number><unit>` pairs whose label mentions `keyword`.
+
+        Reading the last number in stdout is not safe — that is whatever the script
+        printed last, not the quantity being checked. The label may not span a
+        colon or equals sign, so `Final Result: Pump Efficiency = 74.3%` yields the
+        label "Pump Efficiency" rather than the whole line.
+
+        When the quantity carries a unit, the unit must follow the number. Scripts
+        commonly print their working ("Efficiency = 2.675 * 100"), and those
+        intermediate values are not the result being verified.
+        """
+        pattern = re.compile(
+            r"([^\n:=]*\b"
+            + re.escape(keyword)
+            + r"\b[^\n:=]*?)\s*[:=]\s*([-+]?\d+(?:\.\d+)?)\s*"
+            + (re.escape(unit) if unit else "")
+            + (r"(?![\d.])" if unit else r"\s*(?:$|[\n,;)])"),
+            re.IGNORECASE | re.MULTILINE,
+        )
+
+        found: List[tuple] = []
+        for match in pattern.finditer(stdout):
+            label = " ".join(match.group(1).split()).strip("|- \t")
+            if not label:
+                label = keyword.capitalize()
+            try:
+                found.append((label, float(match.group(2))))
+            except ValueError:
+                continue
+        return found
+
+    @staticmethod
+    def _calculation_summary(
+        is_valid: bool,
+        status: str,
+        claims: List[FactClaimVerification],
+        notes: List[str],
+        reason: Optional[str] = None,
+        stdout: str = "",
+    ) -> Dict[str, Any]:
+        """
+        Shape the calculation verdict like a VerificationSummary so the same UI
+        panel can render it, while keeping the keys the orchestrator reads.
+        """
+        supported = sum(1 for c in claims if c.status == FactVerificationStatus.SUPPORTED)
+        unsupported = sum(1 for c in claims if c.status == FactVerificationStatus.UNSUPPORTED)
+        needs_review = sum(1 for c in claims if c.status == FactVerificationStatus.NEEDS_REVIEW)
+
+        payload: Dict[str, Any] = {
+            "is_valid": is_valid,
+            "status": status,
+            "calculation_valid": is_valid,
+            "total_claims": len(claims),
+            "supported_claims": supported,
+            "unsupported_claims": unsupported,
+            "needs_review_claims": needs_review,
+            "claims": [c.model_dump() for c in claims],
+            "notes": notes,
+        }
+        if reason:
+            payload["reason"] = reason
+        if stdout:
+            payload["stdout"] = stdout
+        return payload
+
     def verify_calculation(self, execution_result: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Verify engineering calculation executed in sandbox.
-        Checks exit code, errors, timeout, and output validity.
+        Verify an engineering calculation executed in the sandbox.
+
+        Checks execution health (exit code, timeout, output present) and then the
+        physical plausibility of the numbers produced. A clean exit code alone is
+        not evidence that an answer is correct.
         """
         status = execution_result.get("status", "error")
-        stdout = execution_result.get("stdout", "")
-        stderr = execution_result.get("stderr", "")
+        stdout = execution_result.get("stdout", "") or ""
+        stderr = execution_result.get("stderr", "") or ""
         exit_code = execution_result.get("exit_code", -1)
 
-        notes = []
-        is_valid = True
+        def failure(reason: str, note: str) -> Dict[str, Any]:
+            claim = FactClaimVerification(
+                claim=reason,
+                status=FactVerificationStatus.UNSUPPORTED,
+                source_document="sandbox_execution",
+                confidence=0.95,
+                evidence=note,
+            )
+            return self._calculation_summary(False, "FAILED", [claim], [note], reason=reason)
 
         if status == "timeout":
-            return {
-                "is_valid": False,
-                "status": "FAILED",
-                "reason": "Sandbox execution exceeded timeout limit.",
-                "notes": ["Execution timed out. Optimize algorithm or reduce iterations."]
-            }
+            return failure(
+                "Sandbox execution exceeded the timeout limit.",
+                "Execution timed out. Reduce iterations or simplify the algorithm.",
+            )
 
         if exit_code != 0 or status != "success":
-            return {
-                "is_valid": False,
-                "status": "FAILED",
-                "reason": f"Execution failed with exit code {exit_code}: {stderr}",
-                "notes": [f"Runtime error in Python code: {stderr.strip()}"]
-            }
+            return failure(
+                f"Execution failed with exit code {exit_code}.",
+                f"Runtime error in Python code: {stderr.strip()}",
+            )
 
-        if not stdout or not stdout.strip():
-            return {
-                "is_valid": False,
-                "status": "FAILED",
-                "reason": "Python script exited normally but produced no stdout output.",
-                "notes": ["Calculation completed but did not print final results to stdout."]
-            }
+        if not stdout.strip():
+            return failure(
+                "The script exited cleanly but printed no results.",
+                "Calculation completed but did not write final results to stdout.",
+            )
 
-        # Check for numerical validity in stdout (e.g. negative efficiency, NaN, Inf)
         stdout_lower = stdout.lower()
-        if "nan" in stdout_lower or "infinity" in stdout_lower or "zerodivision" in stdout_lower:
-            return {
-                "is_valid": False,
-                "status": "FAILED",
-                "reason": "Calculation produced undefined or infinite numerical output.",
-                "notes": ["Detected NaN or Infinity in calculation output."]
-            }
+        if any(token in stdout_lower for token in ("nan", "infinity", "zerodivision")):
+            return failure(
+                "Calculation produced an undefined or infinite value.",
+                "Detected NaN, Infinity or a division by zero in the output.",
+            )
 
-        # Efficiency range check if efficiency calculation
-        if "efficiency" in stdout_lower:
-            numbers = re.findall(r"[-+]?\d*\.\d+|\d+", stdout)
-            if numbers:
-                val = float(numbers[-1])
-                if val < 0 or val > 100:
-                    notes.append(f"Efficiency value {val}% is outside physical 0-100% boundary.")
+        claims: List[FactClaimVerification] = [
+            FactClaimVerification(
+                claim="Calculation ran to completion in the isolated sandbox (exit code 0).",
+                status=FactVerificationStatus.SUPPORTED,
+                source_document="sandbox_execution",
+                confidence=0.99,
+                evidence=stdout.strip()[:160],
+            )
+        ]
+        notes: List[str] = ["Sandbox execution completed successfully with exit code 0."]
+        is_valid = True
+        breach_reason: Optional[str] = None
 
-        notes.append("Sandbox execution completed successfully with exit code 0.")
-        return {
-            "is_valid": is_valid,
-            "status": "PASSED",
-            "stdout": stdout.strip(),
-            "notes": notes
-        }
+        for keyword, rule in self.QUANTITY_RULES.items():
+            hard_low, hard_high = rule["hard"]
+            typ_low, typ_high = rule["typical"]
+            unit = rule["unit"]
+
+            # A script often prints the same figure twice (once inline, once as a
+            # final result); report each distinct value once.
+            seen_values: set = set()
+            for label, value in self._extract_labelled_values(stdout, keyword, unit):
+                if round(value, 6) in seen_values:
+                    continue
+                seen_values.add(round(value, 6))
+
+                if value < hard_low or value > hard_high:
+                    is_valid = False
+                    breach_reason = (
+                        f"{label} of {value}{unit} is outside the physical "
+                        f"{hard_low:g}-{hard_high:g}{unit} range."
+                    )
+                    notes.append(breach_reason)
+                    claims.append(FactClaimVerification(
+                        claim=f"{label} = {value}{unit}",
+                        status=FactVerificationStatus.UNSUPPORTED,
+                        source_document="physical_bounds_check",
+                        confidence=0.95,
+                        evidence=f"Physically impossible: outside {hard_low:g}-{hard_high:g}{unit}.",
+                    ))
+                elif value < typ_low or value > typ_high:
+                    note = (
+                        f"{label} of {value}{unit} is inside the physical range but outside the "
+                        f"expected {typ_low:g}-{typ_high:g}{unit} band — {rule['typical_reason']}. "
+                        "Confirm the formula and the input values before issuing this result."
+                    )
+                    notes.append(note)
+                    claims.append(FactClaimVerification(
+                        claim=f"{label} = {value}{unit}",
+                        status=FactVerificationStatus.NEEDS_REVIEW,
+                        source_document="physical_bounds_check",
+                        confidence=0.45,
+                        evidence=note,
+                    ))
+                else:
+                    claims.append(FactClaimVerification(
+                        claim=f"{label} = {value}{unit}",
+                        status=FactVerificationStatus.SUPPORTED,
+                        source_document="physical_bounds_check",
+                        confidence=0.9,
+                        evidence=f"Within the expected {typ_low:g}-{typ_high:g}{unit} band.",
+                    ))
+
+        if is_valid:
+            needs_review = any(c.status == FactVerificationStatus.NEEDS_REVIEW for c in claims)
+            verdict = "REVIEW" if needs_review else "PASSED"
+        else:
+            verdict = "FAILED"
+
+        return self._calculation_summary(
+            is_valid,
+            verdict,
+            claims,
+            notes,
+            reason=breach_reason,
+            stdout=stdout.strip(),
+        )
 
 
 verifier = Verifier()

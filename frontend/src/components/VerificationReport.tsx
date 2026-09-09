@@ -12,6 +12,34 @@ const CLAIM_STYLES = {
     border: '#a7f3d0',
     background: 'var(--success-50)',
   },
+  SUPPORTED_BY_IMAGE: {
+    tone: 'success',
+    label: 'Image Evidence',
+    icon: <CheckCircle2 size={12} />,
+    border: '#93c5fd',
+    background: '#eff6ff',
+  },
+  SUPPORTED_BY_OCR: {
+    tone: 'success',
+    label: 'OCR Tag Provenance',
+    icon: <CheckCircle2 size={12} />,
+    border: '#c4b5fd',
+    background: '#f5f3ff',
+  },
+  SUPPORTED_BY_RAG: {
+    tone: 'success',
+    label: 'RAG Document SOP',
+    icon: <CheckCircle2 size={12} />,
+    border: '#86efac',
+    background: '#f0fdf4',
+  },
+  MODEL_INFERENCE: {
+    tone: 'info',
+    label: 'Model Inference',
+    icon: <BadgeCheck size={12} />,
+    border: '#cbd5e1',
+    background: '#f8fafc',
+  },
   'NEEDS REVIEW': {
     tone: 'warning',
     label: 'Needs review',
@@ -46,16 +74,26 @@ export const VerificationReport: React.FC<{ verification: VerificationSummary | 
     );
   }
 
-  const claims = verification.claims ?? [];
+  const resolved = (verification as any)?.claims
+    ? verification
+    : ((Object.values(verification as any || {}).find((v: any) => v && typeof v === 'object' && Array.isArray(v.claims)) as VerificationSummary | undefined) ?? verification);
+
+  const claims = resolved.claims ?? [];
   const counts = claims.reduce(
     (acc, claim) => {
-      acc[normalizeClaimStatus(claim.status)] += 1;
+      const statusKey = normalizeClaimStatus(claim.status);
+      acc[statusKey] = (acc[statusKey] || 0) + 1;
       return acc;
     },
-    { SUPPORTED: 0, 'NEEDS REVIEW': 0, UNSUPPORTED: 0 } as Record<
-      keyof typeof CLAIM_STYLES,
-      number
-    >,
+    {
+      SUPPORTED: 0,
+      SUPPORTED_BY_IMAGE: 0,
+      SUPPORTED_BY_OCR: 0,
+      SUPPORTED_BY_RAG: 0,
+      MODEL_INFERENCE: 0,
+      'NEEDS REVIEW': 0,
+      UNSUPPORTED: 0,
+    } as Record<keyof typeof CLAIM_STYLES, number>,
   );
 
   return (
@@ -63,17 +101,22 @@ export const VerificationReport: React.FC<{ verification: VerificationSummary | 
       <CardHead
         icon={<ShieldCheck size={16} />}
         title="Verification"
-        subtitle={`${claims.length} claim${claims.length === 1 ? '' : 's'} checked against retrieved sources`}
+        subtitle={`${claims.length} claim${claims.length === 1 ? '' : 's'} checked against sources and physical bounds`}
         actions={
-          verification.is_valid ? (
-            <span className="badge badge-success">
-              <BadgeCheck size={13} />
-              Passed
+          !resolved.is_valid ? (
+            <span className="badge badge-danger">
+              <XCircle size={13} />
+              Failed
             </span>
-          ) : (
+          ) : counts['NEEDS REVIEW'] > 0 || counts.UNSUPPORTED > 0 ? (
             <span className="badge badge-warning">
               <AlertTriangle size={13} />
               Review required
+            </span>
+          ) : (
+            <span className="badge badge-success">
+              <BadgeCheck size={13} />
+              Passed
             </span>
           )
         }
@@ -152,13 +195,13 @@ export const VerificationReport: React.FC<{ verification: VerificationSummary | 
           </div>
         )}
 
-        {verification.calculation_valid !== undefined && verification.calculation_valid !== null && (
+        {resolved.calculation_valid !== undefined && resolved.calculation_valid !== null && (
           <div className="panel row-between">
             <span className="text-sm">Numerical bounds check</span>
             <span
-              className={`badge badge-${verification.calculation_valid ? 'success' : 'danger'}`}
+              className={`badge badge-${resolved.calculation_valid ? 'success' : 'danger'}`}
             >
-              {verification.calculation_valid ? 'Within physical limits' : 'Out of bounds'}
+              {resolved.calculation_valid ? 'Within physical limits' : 'Out of bounds'}
             </span>
           </div>
         )}

@@ -421,4 +421,13 @@ async def test_secondary_demo_engineering_calculation():
     assert sandbox_res["exit_code"] == 0
     assert "Efficiency" in sandbox_res["stdout"]
     assert state.final_output is not None
-    assert "Engineering Calculation Verified Result" in state.final_output
+    assert "Engineering Calculation Result" in state.final_output
+    # The summary must report the verifier's real verdict, never a fixed "passed".
+    assert "- **Verification**:" in state.final_output
+    verdict_line = next(
+        line for line in state.final_output.splitlines() if line.startswith("- **Verification**:")
+    )
+    assert any(
+        marker in verdict_line
+        for marker in ("Passed physical range", "Requires engineer review", "Not accepted")
+    ), verdict_line
