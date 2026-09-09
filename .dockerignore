@@ -1,0 +1,36 @@
+# VCS
+.git
+.gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+venv/
+.venv/
+env/
+.env
+
+# Node / Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Output artifacts & temporary run outputs
+outputs/*.docx
+outputs/*.xlsx
+outputs/*.pptx
+outputs/storage/*
+!outputs/storage/.gitkeep
+logs/*.log
+
+# Sandbox temporary scripts
+sandbox/*.py
+
+# Documentation / IDE
+.vscode/
+.idea/
+*.swp

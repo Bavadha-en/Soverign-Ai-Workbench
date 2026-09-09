@@ -26,9 +26,14 @@ class SandboxExecutor:
         "socket.getaddrinfo = _blocked_func\n"
     )
 
-    def __init__(self, workspace_dir: Optional[str] = None, default_timeout_sec: int = 10):
+    def __init__(
+        self,
+        workspace_dir: Optional[str] = None,
+        default_timeout_sec: int = 10,
+        timeout_sec: Optional[int] = None
+    ):
         self.workspace_dir = workspace_dir or os.path.join(os.getcwd(), "sandbox", "workspace")
-        self.default_timeout_sec = default_timeout_sec
+        self.default_timeout_sec = timeout_sec if timeout_sec is not None else default_timeout_sec
         os.makedirs(self.workspace_dir, exist_ok=True)
 
     def execute(self, code: str, timeout_sec: Optional[int] = None) -> Dict[str, Any]:
@@ -41,11 +46,14 @@ class SandboxExecutor:
 
         Returns:
             Dict containing:
+                - success: bool
                 - status: "success" | "error" | "timeout"
                 - stdout: str
                 - stderr: str
                 - exit_code: int
                 - execution_time_ms: float
+                - duration_ms: float
+                - isolation_mode: str
         """
         timeout = timeout_sec if timeout_sec is not None else self.default_timeout_sec
         start_time = time.time()
@@ -53,17 +61,20 @@ class SandboxExecutor:
         # Guard against empty code
         if not code or not code.strip():
             return {
+                "success": False,
                 "status": "error",
                 "stdout": "",
                 "stderr": "No code provided for execution.",
                 "exit_code": -1,
-                "execution_time_ms": 0.0
+                "execution_time_ms": 0.0,
+                "duration_ms": 0.0,
+                "isolation_mode": "subprocess"
             }
 
-        # Combine network guard with user code
-        full_code = f"{self.NETWORK_GUARD_PREAMBLE}\n# --- User Code ---\n{code}"
+        # Inject network guard at the beginning of script
+        full_code = self.NETWORK_GUARD_PREAMBLE + "\n" + code
 
-        # Write to a temporary file inside the sandbox workspace
+        # Create temporary script file in the sandbox workspace
         with tempfile.NamedTemporaryFile(
             mode="w",
             suffix=".py",
@@ -94,41 +105,42 @@ class SandboxExecutor:
             )
 
             duration_ms = round((time.time() - start_time) * 1000, 2)
+            is_success = (process.returncode == 0)
 
-            if process.returncode == 0:
-                return {
-                    "status": "success",
-                    "stdout": process.stdout,
-                    "stderr": process.stderr,
-                    "exit_code": process.returncode,
-                    "execution_time_ms": duration_ms
-                }
-            else:
-                return {
-                    "status": "error",
-                    "stdout": process.stdout,
-                    "stderr": process.stderr,
-                    "exit_code": process.returncode,
-                    "execution_time_ms": duration_ms
-                }
+            return {
+                "success": is_success,
+                "status": "success" if is_success else "error",
+                "stdout": process.stdout,
+                "stderr": process.stderr,
+                "exit_code": process.returncode,
+                "execution_time_ms": duration_ms,
+                "duration_ms": duration_ms,
+                "isolation_mode": "subprocess"
+            }
 
         except subprocess.TimeoutExpired:
             duration_ms = round((time.time() - start_time) * 1000, 2)
             return {
+                "success": False,
                 "status": "timeout",
                 "stdout": "",
                 "stderr": f"Execution timed out after {timeout} seconds.",
                 "exit_code": -1,
-                "execution_time_ms": duration_ms
+                "execution_time_ms": duration_ms,
+                "duration_ms": duration_ms,
+                "isolation_mode": "subprocess"
             }
         except Exception as e:
             duration_ms = round((time.time() - start_time) * 1000, 2)
             return {
+                "success": False,
                 "status": "error",
                 "stdout": "",
                 "stderr": f"Sandbox execution failure: {str(e)}",
                 "exit_code": -1,
-                "execution_time_ms": duration_ms
+                "execution_time_ms": duration_ms,
+                "duration_ms": duration_ms,
+                "isolation_mode": "subprocess"
             }
         finally:
             # Clean up temporary script file

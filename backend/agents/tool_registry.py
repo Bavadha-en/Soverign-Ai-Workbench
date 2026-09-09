@@ -9,10 +9,13 @@ from backend.documents.image_processor import image_processor
 from backend.documents.ocr import ocr_engine
 from backend.rag.retriever import retriever
 from backend.sandbox.executor import sandbox_executor
+from backend.config import settings
 from backend.llm.factory import get_llm_provider
 from backend.llm.model_router import model_router
 from backend.models.schemas import LLMGenerateRequest
 from backend.tools.word_tool import create_approval_note_docx
+from backend.tools.excel_tool import create_calculation_xlsx
+from backend.tools.ppt_tool import create_executive_summary_pptx
 from backend.api.documents import DOCUMENTS_DB
 
 
@@ -194,12 +197,47 @@ class ToolRegistry:
             prompt: Optional[str] = None,
             **kwargs
         ) -> Dict[str, Any]:
-            # Structured visual inspection findings
-            observations = []
-            confidence = 0.88
-            target_prompt = prompt or "Analyze inspection image for defects, corrosion, or anomalies."
+            target_prompt = prompt or "Analyze this industrial inspection image. Identify any defects, corrosion, cracks, leaks, wear, or anomalies. List each observation as a separate finding with severity and location."
+            img_metadata = None
+            vlm_used = False
 
-            # Check if there is actual image or document text indicating defects
+            if image_source and os.path.exists(image_source):
+                img_metadata = image_processor.process_image(image_source)
+                try:
+                    provider = get_llm_provider()
+                    b64_image = image_processor.image_to_base64(image_source)
+                    vision_model = settings.VISION_MODEL
+                    context_prefix = f"Document context: {document_text}\n\n" if document_text else ""
+                    full_prompt = f"{context_prefix}{target_prompt}\n\nProvide observations as a numbered list."
+
+                    request = LLMGenerateRequest(
+                        prompt=full_prompt,
+                        model=vision_model,
+                        images=[b64_image],
+                        temperature=0.3,
+                        max_tokens=1024,
+                    )
+                    response = await provider.generate(request)
+                    raw_text = response.text.strip()
+                    observations = [line.strip().lstrip("0123456789.-) ") for line in raw_text.split("\n") if line.strip() and len(line.strip()) > 5]
+                    if not observations:
+                        observations = [raw_text]
+                    vlm_used = True
+
+                    return {
+                        "status": "success",
+                        "observations": observations,
+                        "confidence": 0.85,
+                        "image_metadata": img_metadata,
+                        "defect_detected": len(observations) > 0,
+                        "vlm_model": vision_model,
+                        "vlm_used": True,
+                    }
+                except Exception:
+                    pass
+
+            # Fallback: keyword-based observations when VLM unavailable or no image
+            observations = []
             combined_text = (document_text or "") + " " + target_prompt
             combined_lower = combined_text.lower()
 
@@ -213,22 +251,16 @@ class ToolRegistry:
             else:
                 observations.append("Visual examination indicates minor surface wear consistent with operational lifecycle.")
 
-            if image_source and os.path.exists(image_source):
-                img_info = image_processor.process_image(image_source)
-                return {
-                    "status": "success",
-                    "observations": observations,
-                    "confidence": confidence,
-                    "image_metadata": img_info,
-                    "defect_detected": len(observations) > 0
-                }
-
-            return {
+            result: Dict[str, Any] = {
                 "status": "success",
                 "observations": observations,
-                "confidence": confidence,
-                "defect_detected": len(observations) > 0
+                "confidence": 0.88,
+                "defect_detected": len(observations) > 0,
+                "vlm_used": False,
             }
+            if img_metadata:
+                result["image_metadata"] = img_metadata
+            return result
 
         self.register(Tool(
             name="vision",
@@ -315,7 +347,7 @@ class ToolRegistry:
             output_schema={"status": "string", "stdout": "string", "stderr": "string", "exit_code": "integer"}
         ))
 
-        # 8. document_generator tool
+        # 8. document_generator tool (Word .docx)
         def _doc_generator(
             task_id: str,
             reference_document: str = "Inspection Report",
@@ -326,6 +358,9 @@ class ToolRegistry:
             recommended_actions: Optional[List[str]] = None,
             approval_recommendation: str = "APPROVED WITH CONDITIONS",
             sources: Optional[List[Dict[str, Any]]] = None,
+            model_used: Optional[str] = "llama3:latest",
+            verification_status: Optional[str] = "SUPPORTED",
+            human_review_required: Optional[bool] = None,
             output_path: Optional[str] = None,
             **kwargs
         ) -> Dict[str, Any]:
@@ -341,13 +376,17 @@ class ToolRegistry:
                 recommended_actions=recommended_actions,
                 approval_recommendation=approval_recommendation,
                 sources=sources,
+                model_used=model_used,
+                verification_status=verification_status,
+                human_review_required=human_review_required,
                 is_synthetic_demo=True
             )
             return {
                 "status": "success",
                 "output_path": saved_path,
                 "filename": os.path.basename(saved_path),
-                "sections_count": 8
+                "sections_count": 8,
+                "type": "docx"
             }
 
         self.register(Tool(
@@ -380,5 +419,88 @@ class ToolRegistry:
             output_schema={"is_valid": "boolean", "claims": "list"}
         ))
 
+        # 10. excel_generator tool (Excel .xlsx)
+        def _excel_generator(
+            task_id: str,
+            inputs: Optional[List[Dict[str, Any]]] = None,
+            calculations: Optional[List[Dict[str, Any]]] = None,
+            verification: Optional[List[Dict[str, Any]]] = None,
+            sources: Optional[List[Dict[str, Any]]] = None,
+            output_path: Optional[str] = None,
+            title: str = "Engineering Calculation & Verification Workbook",
+            **kwargs
+        ) -> Dict[str, Any]:
+            target_path = output_path or os.path.join(os.getcwd(), "outputs", f"Calculation_{task_id}.xlsx")
+            saved_path = create_calculation_xlsx(
+                output_path=target_path,
+                task_id=task_id,
+                inputs=inputs,
+                calculations=calculations,
+                verification=verification,
+                sources=sources,
+                title=title
+            )
+            return {
+                "status": "success",
+                "output_path": saved_path,
+                "filename": os.path.basename(saved_path),
+                "sheets_count": 4,
+                "type": "xlsx"
+            }
+
+        self.register(Tool(
+            name="excel_generator",
+            description="Generates an official 4-sheet Engineering Calculation Workbook in Excel (.xlsx) format (Inputs, Calculation, Verification, Sources).",
+            func=_excel_generator,
+            input_schema={"task_id": "string", "inputs": "list", "calculations": "list", "verification": "list", "sources": "list"},
+            output_schema={"status": "string", "output_path": "string", "filename": "string", "sheets_count": "integer"}
+        ))
+
+        # 11. ppt_generator tool (PowerPoint .pptx)
+        def _ppt_generator(
+            task_id: str,
+            reference_document: str = "Industrial Inspection Report CV-102.pdf",
+            executive_summary: Optional[Dict[str, Any]] = None,
+            findings: Optional[List[Dict[str, Any]]] = None,
+            sop_comparisons: Optional[List[Dict[str, Any]]] = None,
+            risks: Optional[List[Dict[str, Any]]] = None,
+            recommended_actions: Optional[List[Dict[str, Any]]] = None,
+            approval_recommendation: Optional[Dict[str, Any]] = None,
+            sources_and_sovereignty: Optional[Dict[str, Any]] = None,
+            output_path: Optional[str] = None,
+            title: str = "Inspection Report Review",
+            **kwargs
+        ) -> Dict[str, Any]:
+            target_path = output_path or os.path.join(os.getcwd(), "outputs", f"Executive_Summary_{task_id}.pptx")
+            saved_path = create_executive_summary_pptx(
+                output_path=target_path,
+                task_id=task_id,
+                reference_document=reference_document,
+                executive_summary=executive_summary,
+                findings=findings,
+                sop_comparisons=sop_comparisons,
+                risks=risks,
+                recommended_actions=recommended_actions,
+                approval_recommendation=approval_recommendation,
+                sources_and_sovereignty=sources_and_sovereignty,
+                title=title
+            )
+            return {
+                "status": "success",
+                "output_path": saved_path,
+                "filename": os.path.basename(saved_path),
+                "slides_count": 8,
+                "type": "pptx"
+            }
+
+        self.register(Tool(
+            name="ppt_generator",
+            description="Generates a professional 8-slide Executive Presentation in PowerPoint (.pptx) format covering findings, SOP matrix, risks, and sovereignty.",
+            func=_ppt_generator,
+            input_schema={"task_id": "string", "reference_document": "string", "title": "string"},
+            output_schema={"status": "string", "output_path": "string", "filename": "string", "slides_count": "integer"}
+        ))
+
 
 tool_registry = ToolRegistry()
+

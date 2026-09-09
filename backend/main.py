@@ -1,6 +1,8 @@
+import os
 from datetime import datetime, timezone
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 
 from backend.api.agent import router as agent_router
 from backend.api.chat import router as chat_router
@@ -8,6 +10,7 @@ from backend.api.documents import router as documents_router
 from backend.api.knowledge import router as knowledge_router
 from backend.api.logs import router as logs_router
 from backend.api.tasks import router as tasks_router
+from backend.api.tools import router as tools_router
 from backend.llm.ollama_provider import OllamaLLMProvider
 from backend.llm.registry import model_registry
 from backend.models.schemas import HealthResponse
@@ -39,6 +42,8 @@ app.include_router(knowledge_router)
 app.include_router(tasks_router)
 app.include_router(chat_router)
 app.include_router(logs_router)
+app.include_router(tools_router)
+
 
 # Health check helper
 ollama_probe = OllamaLLMProvider()
@@ -80,3 +85,53 @@ async def health_check():
         models=models_status if ollama_available else None,
         network="LOCAL_ONLY"
     )
+
+
+@app.get("/outputs/{filename:path}", tags=["Deliverables"])
+async def download_output_file(filename: str):
+    """
+    Securely download generated deliverable files (.docx, .xlsx, .pptx) from outputs directory.
+    Strictly prevents directory traversal and unauthorized filesystem access.
+    """
+    # Reject suspicious path traversal attempts immediately
+    if ".." in filename or filename.startswith("/") or filename.startswith("\\") or ":" in filename:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid filename: Path traversal is strictly forbidden."
+        )
+
+    base_output_dir = os.path.abspath(os.path.join(os.getcwd(), "outputs"))
+    requested_path = os.path.abspath(os.path.join(base_output_dir, filename))
+
+    # Verify that requested path is within the base output directory
+    common_prefix = os.path.commonpath([base_output_dir, requested_path])
+    if common_prefix != base_output_dir or not requested_path.startswith(base_output_dir):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access forbidden: Path outside outputs directory."
+        )
+
+    if not os.path.exists(requested_path) or not os.path.isfile(requested_path):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Deliverable file '{filename}' not found."
+        )
+
+    ext = os.path.splitext(requested_path)[1].lower()
+    media_types = {
+        ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        ".pdf": "application/pdf",
+        ".json": "application/json",
+        ".txt": "text/plain",
+        ".csv": "text/csv"
+    }
+    media_type = media_types.get(ext, "application/octet-stream")
+
+    return FileResponse(
+        path=requested_path,
+        media_type=media_type,
+        filename=os.path.basename(requested_path)
+    )
+

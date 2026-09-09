@@ -1,0 +1,228 @@
+export type FactVerificationStatus = 'SUPPORTED' | 'UNSUPPORTED' | 'NEEDS REVIEW';
+
+export interface HealthResponse {
+  status: string;
+  app_name: string;
+  version: string;
+  environment: string;
+  timestamp: string;
+  ollama: string | null;
+  models: Record<string, boolean> | null;
+  network?: string;
+}
+
+export interface NetworkStatus {
+  internet_required: boolean;
+  external_ai_calls: number;
+  external_connections: number;
+  status: 'LOCAL_ONLY' | 'WARNING_EXTERNAL_ATTEMPT_DETECTED' | string;
+}
+
+export interface NetworkConnectionEvent {
+  id: string;
+  timestamp: string;
+  protocol: string;
+  source: string;
+  destination: string;
+  process: string;
+  status: string;
+  is_external: boolean;
+  bytes_transferred: number;
+}
+
+export interface NetworkInterfaceInfo {
+  name: string;
+  ip: string;
+  type: string;
+  status: string;
+  egress_allowed: boolean;
+}
+
+export interface ListeningPortInfo {
+  port: number;
+  service: string;
+  binding: string;
+  scope: string;
+  status: string;
+}
+
+export interface NetworkTelemetry {
+  timestamp: string;
+  status: string;
+  air_gap_compliant: boolean;
+  internet_required: boolean;
+  external_ai_calls: number;
+  external_connections: number;
+  wan_egress_blocked: number;
+  total_local_requests: number;
+  active_listening_ports: ListeningPortInfo[];
+  interfaces: NetworkInterfaceInfo[];
+  recent_traffic: NetworkConnectionEvent[];
+  integrity_hash: string;
+}
+
+export interface ToolDefinition {
+  name: string;
+  description: string;
+  input_schema?: Record<string, unknown>;
+  output_schema?: Record<string, unknown>;
+}
+
+export type ToolInfo = ToolDefinition;
+
+export interface PlanStep {
+  step: number;
+  action: string;
+  tool: string;
+  description?: string;
+  params?: Record<string, unknown>;
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'retried' | string;
+  result?: unknown;
+  error?: string | null;
+}
+
+export interface FactClaimVerification {
+  claim: string;
+  status: FactVerificationStatus;
+  source_document?: string | null;
+  page?: number | null;
+  confidence?: number;
+  evidence?: string | null;
+}
+
+export interface VerificationSummary {
+  is_valid: boolean;
+  total_claims: number;
+  supported_claims: number;
+  unsupported_claims: number;
+  needs_review_claims: number;
+  claims: FactClaimVerification[];
+  calculation_valid?: boolean | null;
+  notes?: string[];
+}
+
+export interface SourceReference {
+  document?: string;
+  page?: number | null;
+  content?: string;
+  score?: number;
+  metadata?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+export interface Deliverable {
+  filename: string;
+  type: 'docx' | 'xlsx' | 'pptx' | 'pdf' | 'other';
+  label: string;
+  description: string;
+  downloadUrl: string;
+}
+
+export interface AgentRunRequest {
+  task: string;
+  document_ids?: string[];
+  parameters?: Record<string, unknown>;
+}
+
+export interface AgentRunResponse {
+  task_id: string;
+  status: string;
+  plan: PlanStep[];
+  steps_completed: number;
+  final_output: string | null;
+  sources: SourceReference[];
+  generated_files: string[];
+  verification: VerificationSummary | null;
+  execution_trace: string[];
+  local: boolean;
+}
+
+export interface AgentTaskState {
+  task_id: string;
+  status: 'PLANNING' | 'EXECUTING' | 'VERIFYING' | 'RETRYING' | 'COMPLETED' | 'FAILED' | string;
+  current_step_index: number;
+  plan: PlanStep[];
+  completed_steps: Array<{
+    step: number;
+    action: string;
+    tool: string;
+    result?: unknown;
+    error?: string;
+  }>;
+  retrieved_context: SourceReference[];
+  intermediate_data: Record<string, unknown>;
+  verification_results: VerificationSummary | null;
+  final_output: string | null;
+  generated_files: string[];
+  execution_trace: string[];
+  retry_count: number;
+  created_at: string;
+  updated_at: string;
+  task?: string;
+  document_ids?: string[];
+}
+
+export interface DocumentUploadResponse {
+  document_id: string;
+  filename: string;
+  file_size: number;
+  content_type: string;
+  storage_path: string;
+  uploaded_at: string;
+  status: string;
+  pages?: number | null;
+  text_extracted: boolean;
+  ocr_pages: number[];
+  source: string;
+}
+
+export interface DocumentMetadataResponse {
+  document_id: string;
+  filename: string;
+  file_size: number;
+  content_type: string;
+  storage_path: string;
+  uploaded_at: string;
+  status: string;
+  pages?: number | null;
+  text_extracted: boolean;
+  ocr_pages: number[];
+  source: string;
+}
+
+export interface AuditLogEntry {
+  id: string;
+  timestamp: string;
+  task_id?: string | null;
+  action: string;
+  component: string;
+  status: string;
+  duration_ms: number;
+  details?: Record<string, unknown> | null;
+  is_external: boolean;
+}
+
+export interface AuditLogResponse {
+  logs: AuditLogEntry[];
+  total: number;
+}
+
+export interface KnowledgeSearchResultItem {
+  document: string;
+  page?: number | null;
+  content: string;
+  score: number;
+  metadata?: Record<string, unknown> | null;
+}
+
+export interface KnowledgeSearchResponse {
+  query: string;
+  results: KnowledgeSearchResultItem[];
+}
+
+export interface KnowledgeIngestResponse {
+  status: string;
+  documents_indexed: number;
+  chunks_created: number;
+  message: string;
+}

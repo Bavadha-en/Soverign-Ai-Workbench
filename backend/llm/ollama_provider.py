@@ -8,6 +8,7 @@ from backend.config import is_local_url, settings
 from backend.llm.interface import LLMProvider
 from backend.models.schemas import LLMGenerateRequest, LLMGenerateResponse
 from backend.services.audit_service import audit_service
+from backend.services.network_monitor import network_monitor
 
 
 class OllamaLLMProvider(LLMProvider):
@@ -31,6 +32,13 @@ class OllamaLLMProvider(LLMProvider):
                     "attempted_url": self.base_url,
                     "external_call": True
                 },
+                is_external=True
+            )
+            network_monitor.record_connection(
+                source="127.0.0.1:8000",
+                destination=self.base_url,
+                process="ollama_client",
+                status="BLOCKED_EXTERNAL_VIOLATION",
                 is_external=True
             )
             raise ValueError(
@@ -75,6 +83,17 @@ class OllamaLLMProvider(LLMProvider):
                 "completion_tokens": eval_count,
                 "total_tokens": prompt_eval_count + eval_count
             }
+
+            # Record in real-time network monitor
+            network_monitor.record_connection(
+                source="127.0.0.1:8000",
+                destination=f"{self.base_url}/api/generate",
+                process=f"ollama_{model_name}",
+                protocol="HTTP/REST",
+                status="ALLOWED_LOCAL",
+                is_external=False,
+                bytes_transferred=len(request.prompt) + len(generated_text)
+            )
 
             # Log audit trail for sovereign LLM generation
             audit_service.log_action(

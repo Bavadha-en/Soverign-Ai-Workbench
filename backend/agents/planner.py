@@ -47,9 +47,10 @@ class Planner:
         parameters: Optional[Dict[str, Any]]
     ) -> List[Dict[str, Any]]:
         """
-        Construct 6-step verified workflow for industrial inspection reports:
-        1. document_reader -> 2. vision -> 3. rag_search -> 4. llm_generate -> 5. verification -> 6. document_generator
+        Construct verified workflow for industrial inspection reports:
+        1. document_reader -> 2. vision -> 3. rag_search -> 4. llm_generate -> 5. verification -> 6+. deliverable generator(s)
         """
+        task_lower = task.lower()
         plan = [
             {
                 "step": 1,
@@ -85,9 +86,31 @@ class Planner:
                 "tool": "verification",
                 "description": "Verify extracted claims and severity ratings against retrieved SOP knowledge sources",
                 "params": {"task_type": "fact"}
-            },
-            {
-                "step": 6,
+            }
+        ]
+
+        current_step = 6
+        include_docx = True
+        include_pptx = False
+        include_xlsx = False
+
+        if "all" in task_lower and ("deliverable" in task_lower or "management" in task_lower):
+            include_docx = True
+            include_pptx = True
+            include_xlsx = True
+        elif "presentation" in task_lower or "executive summary" in task_lower or "slide" in task_lower or "pptx" in task_lower or "powerpoint" in task_lower:
+            include_pptx = True
+            if "approval" in task_lower or "note" in task_lower or "docx" in task_lower or "word" in task_lower or "report" in task_lower:
+                include_docx = True
+            elif "only presentation" in task_lower or "only ppt" in task_lower:
+                include_docx = False
+
+        if "excel" in task_lower or "xlsx" in task_lower or "calculation" in task_lower or "workbook" in task_lower:
+            include_xlsx = True
+
+        if include_docx:
+            plan.append({
+                "step": current_step,
                 "action": "generate_approval_note",
                 "tool": "document_generator",
                 "description": "Generate official 8-section Word (.docx) Inspection Review & Approval Note",
@@ -96,8 +119,34 @@ class Planner:
                     "risk_severity": "HIGH",
                     "approval_recommendation": "APPROVED WITH MANDATORY REPLACEMENT UNDER SOP-M-402"
                 }
-            }
-        ]
+            })
+            current_step += 1
+
+        if include_pptx:
+            plan.append({
+                "step": current_step,
+                "action": "generate_presentation",
+                "tool": "ppt_generator",
+                "description": "Generate official 8-slide PowerPoint (.pptx) Executive Presentation",
+                "params": {
+                    "reference_document": parameters.get("reference_document", "Industrial Inspection Report") if parameters else "Industrial Inspection Report",
+                    "title": "Inspection Report Review"
+                }
+            })
+            current_step += 1
+
+        if include_xlsx:
+            plan.append({
+                "step": current_step,
+                "action": "generate_calculation_workbook",
+                "tool": "excel_generator",
+                "description": "Generate official 4-sheet Excel (.xlsx) Calculation & Verification Workbook",
+                "params": {
+                    "title": "Inspection Findings & Engineering Calculation Workbook"
+                }
+            })
+            current_step += 1
+
         return plan
 
     def _plan_engineering_calculation(
@@ -106,9 +155,10 @@ class Planner:
         parameters: Optional[Dict[str, Any]]
     ) -> List[Dict[str, Any]]:
         """
-        Construct 4-step verified workflow for engineering calculation:
-        1. code_generator (llm) -> 2. code_executor (sandbox) -> 3. verification -> 4. synthesize_result (llm)
+        Construct verified workflow for engineering calculation:
+        1. code_generator (llm) -> 2. code_executor (sandbox) -> 3. verification -> 4. excel_generator (if requested) -> 5. synthesize_result (llm)
         """
+        task_lower = task.lower()
         plan = [
             {
                 "step": 1,
@@ -136,16 +186,44 @@ class Planner:
                 "tool": "verification",
                 "description": "Verify calculation execution exit status, numerical outputs, and physical bounds",
                 "params": {"task_type": "calculation"}
-            },
-            {
-                "step": 4,
-                "action": "synthesize_results",
-                "tool": "llm_generate",
-                "description": "Format engineering calculation steps and verified final answer for user",
-                "params": {"prompt": f"Summarize the calculated engineering result for: {task}"}
             }
         ]
+
+        current_step = 4
+        # Check if workbook or deliverable requested
+        calc_deliverable_keywords = ["workbook", "excel", "xlsx", "sheet", "report", "deliverable", "spreadsheet", "create"]
+        if any(kw in task_lower for kw in calc_deliverable_keywords) or "calculate" in task_lower:
+            plan.append({
+                "step": current_step,
+                "action": "generate_calculation_workbook",
+                "tool": "excel_generator",
+                "description": "Generate official 4-sheet Excel (.xlsx) Engineering Calculation Workbook",
+                "params": {
+                    "title": "Engineering Calculation & Verification Workbook"
+                }
+            })
+            current_step += 1
+
+        if "approval" in task_lower or "docx" in task_lower or "word" in task_lower:
+            plan.append({
+                "step": current_step,
+                "action": "generate_approval_note",
+                "tool": "document_generator",
+                "description": "Generate official Word (.docx) Calculation Summary Note",
+                "params": {}
+            })
+            current_step += 1
+
+        plan.append({
+            "step": current_step,
+            "action": "synthesize_results",
+            "tool": "llm_generate",
+            "description": "Format engineering calculation steps and verified final answer for user",
+            "params": {"prompt": f"Summarize the calculated engineering result for: {task}"}
+        })
+
         return plan
+
 
     def _plan_general_reasoning(
         self,

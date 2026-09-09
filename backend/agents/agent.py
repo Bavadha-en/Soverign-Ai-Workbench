@@ -150,28 +150,34 @@ class ConfigIQAgent:
 
     def _finalize_output(self, state: AgentState) -> None:
         """Construct user-facing final output text summarizing agent findings."""
-        if state.generated_files:
-            doc_name = os.path.basename(state.generated_files[0])
-            state.final_output = (
-                f"### Inspection Review & Approval Completed\n\n"
-                f"- **Task ID**: `{state.task_id}`\n"
-                f"- **Deliverable**: Generated Word document `{doc_name}`\n"
-                f"- **Status**: Verified against local SOP knowledge base\n"
-                f"- **Risk Assessment**: HIGH (Mandatory Replacement Required)\n"
-                f"- **Recommended Work Order**: Procure ASME B31.3 compliant 316L stainless steel control valve replacement per SOP-M-402."
-            )
-        elif "execute_in_sandbox" in state.tool_results:
+        if "execute_in_sandbox" in state.tool_results:
             sandbox_res = state.tool_results["execute_in_sandbox"]
             stdout = sandbox_res.get("stdout", "")
+            files_md = ""
+            if state.generated_files:
+                files_list = ", ".join(f"`{os.path.basename(f)}`" for f in state.generated_files)
+                files_md = f"\n- **Generated Deliverables**: {files_list}"
             state.final_output = (
                 f"### Engineering Calculation Verified Result\n\n"
                 f"```text\n{stdout.strip()}\n```\n\n"
                 f"- **Execution Status**: Success (Exit code: 0)\n"
                 f"- **Sandbox Environment**: Isolated local Python runtime\n"
-                f"- **Verification**: Passed physical range and numerical validity checks."
+                f"- **Verification**: Passed physical range and numerical validity checks.{files_md}"
+            )
+        elif state.generated_files:
+            file_names = [os.path.basename(f) for f in state.generated_files]
+            files_str = ", ".join(f"`{f}`" for f in file_names)
+            state.final_output = (
+                f"### Inspection Review & Approval Completed\n\n"
+                f"- **Task ID**: `{state.task_id}`\n"
+                f"- **Deliverables**: {files_str}\n"
+                f"- **Status**: Verified against local SOP knowledge base\n"
+                f"- **Risk Assessment**: HIGH (Mandatory Replacement Required)\n"
+                f"- **Recommended Work Order**: Procure ASME B31.3 compliant 316L stainless steel control valve replacement per SOP-M-402."
             )
         else:
             state.final_output = f"Autonomous workflow completed {len(state.completed_steps)} steps successfully."
 
 
 agent_orchestrator = ConfigIQAgent()
+

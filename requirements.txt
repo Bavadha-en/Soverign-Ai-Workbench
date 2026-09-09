@@ -12,19 +12,18 @@ PyMuPDF>=1.23.0
 pytesseract>=0.3.10
 Pillow>=10.0.0
 
-# Knowledge Base & Vector Search
-chromadb>=0.4.0
-sentence-transformers>=2.2.0
+# HTTP Client (Ollama API)
+httpx>=0.24.0
 
-# Agent Orchestration
-langgraph>=0.0.10
-langchain-core>=0.1.0
+# System Monitoring (Network Sovereignty)
+psutil>=5.9.0
 
 # Document Generation
 python-docx>=0.8.11
 openpyxl>=3.1.0
+python-pptx>=0.6.21
 
 # Testing & Utilities
 pytest>=7.4.0
-httpx>=0.24.0
+pytest-asyncio>=0.21.0
 python-dotenv>=1.0.0

@@ -1,0 +1,80 @@
+version: '3.8'
+
+# ====================================================================
+# ConfigIQ - Sovereign On-Premise Agentic AI Workbench
+# Complete Air-Gapped Multi-Container Orchestration (SIH PS 26117)
+# ====================================================================
+
+services:
+  # 1. Sovereign AI Backend Service
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: configiq-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - SOVEREIGN_MODE=true
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - EMBEDDING_MODEL=nomic-embed-text:latest
+      - GENERAL_MODEL=llama3:latest
+      - CODING_MODEL=qwen2.5-coder:7b
+      - CODING_HEAVY_MODEL=qwen2.5-coder:14b
+      - VISION_MODEL=moondream:latest
+      - ALLOWED_LOCAL_HOSTS=localhost,127.0.0.1,host.docker.internal,ollama,backend
+    volumes:
+      - ./outputs:/app/outputs
+      - ./knowledge_base:/app/knowledge_base
+      - ./logs:/app/logs
+    networks:
+      - sovereign-net
+    depends_on:
+      - ollama
+
+  # 2. Sovereign AI Frontend Web Console
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: configiq-frontend
+    restart: unless-stopped
+    ports:
+      - "5173:80"
+    environment:
+      - VITE_API_BASE_URL=http://localhost:8000
+    networks:
+      - sovereign-net
+    depends_on:
+      - backend
+
+  # 3. Local On-Premise Open-Weight Model Engine (Ollama)
+  ollama:
+    image: ollama/ollama:latest
+    container_name: configiq-ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_models:/root/.ollama
+    networks:
+      - sovereign-net
+    # For GPU acceleration on Linux (NVIDIA Container Toolkit):
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+networks:
+  # Fully isolated bridge network with internal DNS resolution
+  sovereign-net:
+    driver: bridge
+    internal: false # Keep false for local host port bindings, all AI calls remain within this sovereign-net
+
+volumes:
+  ollama_models:
+    name: configiq_ollama_models
