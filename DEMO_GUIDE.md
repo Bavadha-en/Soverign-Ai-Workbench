@@ -26,21 +26,25 @@ Ensure Ollama is running locally with required models loaded:
 ollama list
 ```
 
-### Step 2: Start the FastAPI Sovereign Backend
-Open a terminal in the repository root:
-```powershell
-python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
-```
-- API Documentation: `http://localhost:8000/docs`
-- Network Telemetry: `http://localhost:8000/network/telemetry`
-- Audit HTML Report: `http://localhost:8000/audit/report`
+### Step 2: Start ConfigIQ
 
-### Step 3: Start the React Modern Frontend
-Open a second terminal in the `frontend` directory:
+One command starts the backend and serves the console from the same origin:
 ```powershell
-npm run dev
+python run.py
 ```
-Open browser to: `http://localhost:5173/`
+Then open: `http://localhost:8000/`
+
+The launcher checks dependencies, detects Ollama, auto-indexes the knowledge
+base and reports the model it will use. No Node toolchain is required.
+
+Useful URLs during the demo:
+- Console: `http://localhost:8000/`
+- API documentation: `http://localhost:8000/docs`
+- Network telemetry: `http://localhost:8000/network/telemetry`
+- Audit HTML report: `http://localhost:8000/audit/report`
+
+*Developing the frontend?* Run `npm run dev` in `frontend/` and use
+`http://localhost:5173/` instead; rebuild with `npm run build` before demoing.
 
 ---
 
@@ -50,13 +54,13 @@ Open browser to: `http://localhost:5173/`
 Demonstrate automated processing of noisy industrial inspection forms, cross-referencing extracted telemetry against local ISO/API engineering standards via RAG, and generating a validated Word (.docx) approval note with dynamic extraction (zero hardcoded values).
 
 ### Step-by-Step Instructions:
-1. Navigate to **Workbench** in the top navigation bar.
+1. Navigate to **Workbench** in the left sidebar.
 2. Upload Inspection Report A:
-   - Click **Browse Files** and select `demo_data/inspection/report_A_scanned.png` (or `report_A_clean.pdf`).
+   - Under **Evidence**, drop or browse for `demo_data/inspection/inspection_report_P101_scanned.png` (or `inspection_report_P101_clean.pdf`).
    - Notice realistic scan artifacts, stamps, and signatures.
 3. Execute Analysis:
    - Enter prompt: `"Analyze this inspection report for pump P-101. Cross-reference vibration and seal leakage against ISO 10816-3 and API 610 standards, and generate an executive approval note."`
-   - Click **Execute Sovereign Pipeline**.
+   - Click **Run task**.
 4. Observe Dynamic Execution:
    - **Step 1 (Vision/OCR):** `moondream:latest` and OCR engine extract:
      - Equipment ID: `P-101` (Heavy Crude Feed Pump)
@@ -70,7 +74,7 @@ Demonstrate automated processing of noisy industrial inspection forms, cross-ref
    - **Step 4 (Verification):** Verifier confirms 100% of findings are grounded.
    - **Step 5 (Deliverable):** Word Tool generates `outputs/approval_notes/Inspection_Approval_Note_P-101.docx`.
 5. Anti-Hardcode Dynamic Verification (Test with Report B):
-   - Click **New Task** and upload `demo_data/inspection/report_B_scanned.png`.
+   - Click **Clear run**, then attach `demo_data/inspection/inspection_report_P202_scanned.png`.
    - Enter: `"Analyze inspection report for pump P-202 and produce approval note."`
    - Verify that output dynamically reflects `P-202`, `5.1 mm/s`, `71.0 deg C`, `2 drops/min`, and **HIGH / WARNING** classification.
 
@@ -125,7 +129,7 @@ Provide technical evidence that the workbench operates under 100% sovereign air-
    - **Status:** `LOCAL_ONLY` / `AIR-GAP VERIFIED`
    - **External AI Calls:** `0`
    - **External Application Sockets:** `0`
-   - **Local Bindings:** `127.0.0.1:11434` (Ollama), `0.0.0.0:8000` (FastAPI), `localhost:5173` (React)
+   - **Local Bindings:** `127.0.0.1:11434` (Ollama), `0.0.0.0:8000` (FastAPI), `0.0.0.0:8000` also serves the console
    - **Sovereign Seal Hash:** Cryptographic SHA-256 hash (`SOVEREIGN-SEAL-...`)
 3. View Audit Report: HTML download at `http://localhost:8000/audit/report`.
 
