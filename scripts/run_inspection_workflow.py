@@ -1,4 +1,4 @@
-﻿import os
+import os
 import sys
 import json
 import time
@@ -158,12 +158,25 @@ async def main():
             }
         }
     }
+    telemetry = network_monitor.get_telemetry()
+    results["network_telemetry"] = {
+        "status": telemetry.status,
+        "external_ai_calls": telemetry.external_ai_calls,
+        "wan_egress_blocked": telemetry.wan_egress_blocked,
+        "air_gap_compliant": telemetry.air_gap_compliant,
+        "integrity_seal": telemetry.integrity_hash
+    }
+    results["verdict"] = "PASS" if hardcode_check_pass and telemetry.air_gap_compliant else "FAIL"
 
     out_file = os.path.join(RESULTS_DIR, "inspection_e2e.json")
     with open(out_file, "w", encoding="utf-8") as f:
         json.dump(results, f, indent=2)
 
-    print(f"\nSaved end-to-end inspection results to {out_file}")
+    offline_out_file = os.path.join(RESULTS_DIR, "offline_inspection_test.json")
+    with open(offline_out_file, "w", encoding="utf-8") as f:
+        json.dump(results, f, indent=2)
+
+    print(f"\nSaved end-to-end inspection results to {out_file} and {offline_out_file}")
 
 if __name__ == "__main__":
     asyncio.run(main())

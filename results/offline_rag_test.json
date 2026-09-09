@@ -1,0 +1,38 @@
+{
+  "timestamp": "2026-09-09T14:17:41.355208+00:00",
+  "query": "What is the recommended inspection and maintenance procedure for a centrifugal pump showing elevated vibration according to ISO 10816?",
+  "embedding_model": "nomic-embed-text:latest",
+  "vector_database": "LocalVectorStore (JSON / outputs/storage/vector_store.json)",
+  "llm_model": "llama3:latest",
+  "retrieved_documents": [
+    {
+      "id": "sop_centrifugal_pump_maintenance.md_p1_c0",
+      "document": "sop_centrifugal_pump_maintenance.md",
+      "page": 1,
+      "score": 0.7966,
+      "snippet": "# Standard Operating Procedure: Centrifugal Pump Overhaul & Mechanical Seal Maintenance (SOP-M-104)\n\n## 1. Scope & Objective\nThis Standard Operating Procedure (SOP-M-104) defines the mandatory technic"
+    },
+    {
+      "id": "SOP-M-104_centrifugal_pump_maintenance.md_p1_c0",
+      "document": "SOP-M-104_centrifugal_pump_maintenance.md",
+      "page": 1,
+      "score": 0.7839,
+      "snippet": "# Standard Operating Procedure: Centrifugal Pump Overhaul & Mechanical Seal Maintenance (SOP-M-104)\n\n## 1. Purpose & Scope\nThis Standard Operating Procedure (SOP-M-104) defines mandatory maintenance, "
+    },
+    {
+      "id": "SOP-M-104_centrifugal_pump_maintenance.md_p1_c2",
+      "document": "SOP-M-104_centrifugal_pump_maintenance.md",
+      "page": 1,
+      "score": 0.7528,
+      "snippet": "3. Vibration & Condition Monitoring Thresholds (ISO 10816-3 Class II)\nTriaxial velocity vibration measurements must be logged on pump and motor bearing housings (horizontal, vertical, axial):\n- **Zone"
+    }
+  ],
+  "answer": "According to the retrieved standard operating procedure [SOP-M-104_centrifugal_pump_maintenance.md], for a centrifugal pump showing elevated vibration according to ISO 10816-3 Class II (Zone C / Warning: 4.5 - 7.1 mm/s RMS), the recommended inspection and maintenance procedure is to:\n\n\"Schedule maintenance and overhaul as per SOP-M-104, Section 3: Vibration & Condition Monitoring Thresholds.\"\n\nThis is stated in the document as follows:\n\n\"**Zone C / Warning (4.5 - 7.1 mm/s RMS)**: Elevated vibration indicating bearing degradation, cavitation, or unbalance. Schedule maintenance and overhaul as per SOP-M-104, Section 3: Vibration & Condition Monitoring Thresholds.\"",
+  "latencies": {
+    "retrieval_ms": 2094.8,
+    "generation_seconds": 9.99
+  },
+  "network_status": "LOCAL_ONLY",
+  "external_network_calls": 0,
+  "pass/fail": "PASS"
+}

@@ -1,6 +1,6 @@
 import os
 import inspect
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Union
 from pydantic import BaseModel
 
 from backend.agents.schemas import ToolDefinition
@@ -13,10 +13,11 @@ from backend.config import settings
 from backend.llm.factory import get_llm_provider
 from backend.llm.model_router import model_router
 from backend.models.schemas import LLMGenerateRequest
-from backend.tools.word_tool import create_approval_note_docx
-from backend.tools.excel_tool import create_calculation_xlsx
+from backend.tools.word_tool import create_approval_note_docx, create_engineering_report_docx
+from backend.tools.excel_tool import create_calculation_xlsx, create_engineering_analysis_xlsx
 from backend.tools.ppt_tool import create_executive_summary_pptx
 from backend.api.documents import DOCUMENTS_DB
+
 
 
 class Tool:
@@ -227,26 +228,62 @@ class ToolRegistry:
 
             if actual_image_path and os.path.exists(actual_image_path):
                 img_metadata = image_processor.process_image(actual_image_path)
+                is_pid_query = any(k in (actual_image_path + " " + target_prompt).lower() for k in ["pid", "p&id", "piping", "diagram", "flowsheet", "valve", "instrument"])
+                pid_context = None
+
+                if is_pid_query:
+                    try:
+                        from backend.documents.pid_pipeline import pid_hybrid_pipeline
+                        pid_context = await pid_hybrid_pipeline.analyze(actual_image_path, query=target_prompt)
+                        # Surface direct QA answer prominently if available
+                        qa = pid_context.get("engineering_qa", {})
+                        if qa.get("answer"):
+                            observations.append(f"Diagram Analysis: {qa['answer']}")
+                            findings.append({"finding": qa["answer"], "type": "qa_answer", "confidence": qa.get("confidence", 0.95)})
+
+                        # Add structured findings from PID hybrid pipeline
+                        for t in pid_context.get("ocr_tags", []):
+                            observations.append(f"Detected alphanumeric tag: {t['text']} (confidence: {t['confidence']})")
+                            findings.append({"finding": f"OCR Tag: {t['text']}", "type": "ocr_tag", "confidence": t["confidence"]})
+                        for v in pid_context.get("valves", []):
+                            observations.append(f"Detected valve symbol: {v.get('label', v.get('id'))} at [{v['bbox'][0]}, {v['bbox'][1]}]")
+                            findings.append({"finding": f"Valve: {v.get('label', v.get('id'))}", "type": "valve", "confidence": v.get("confidence", 0.9)})
+                        for eq in pid_context.get("equipment", []):
+                            observations.append(f"Detected equipment: {eq.get('label', eq.get('id'))} (type: {eq.get('type')})")
+                            findings.append({"finding": f"Equipment: {eq.get('label', eq.get('id'))}", "type": "equipment", "confidence": eq.get("confidence", 0.9)})
+                        for e in pid_context.get("connections", [])[:6]:
+                            observations.append(f"Piping line connects {e['source']} to {e['target']} ({e.get('line_type', 'process')} line)")
+                            findings.append({"finding": f"Connection: {e['source']} -> {e['target']}", "type": "connection", "confidence": e.get("confidence", 0.8)})
+                    except Exception:
+                        pass
+
                 try:
                     provider = get_llm_provider()
-                    b64_image = image_processor.image_to_base64(actual_image_path)
-                    context_prefix = f"Document context: {document_text}\n\n" if document_text else ""
-                    full_prompt = f"{context_prefix}{target_prompt}\n\nProvide observations as a clean concise list."
-
-                    request = LLMGenerateRequest(
-                        prompt=full_prompt,
-                        model=vision_model,
-                        images=[b64_image],
-                        temperature=0.2,
-                        max_tokens=1024,
-                    )
-                    response = await provider.generate(request)
-                    raw_text = response.text.strip()
-                    lines = [line.strip().lstrip("0123456789.-) *") for line in raw_text.split("\n") if line.strip() and len(line.strip()) > 3]
-                    if lines:
-                        observations = lines
+                    # Skip mock VLM generation if we already have rich deterministic P&ID extraction
+                    if pid_context and provider.__class__.__name__ == "MockLLMProvider":
+                        pass
                     else:
-                        observations = [raw_text] if raw_text else ["Visual inspection completed without notable anomaly."]
+                        b64_image = image_processor.image_to_base64(actual_image_path)
+                        context_prefix = f"Document context: {document_text}\n\n" if document_text else ""
+                        full_prompt = f"{context_prefix}{target_prompt}\n\nProvide observations as a clean concise list."
+
+                        request = LLMGenerateRequest(
+                            prompt=full_prompt,
+                            model=vision_model,
+                            images=[b64_image],
+                            temperature=0.2,
+                            max_tokens=1024,
+                        )
+                        response = await provider.generate(request)
+                        raw_text = response.text.strip()
+                        lines = [line.strip().lstrip("0123456789.-) *") for line in raw_text.split("\n") if line.strip() and len(line.strip()) > 3]
+                        # Filter out inappropriate flange corrosion boilerplate if analyzing a P&ID
+                        if pid_context:
+                            lines = [l for l in lines if not any(w in l.lower() for w in ["flange face", "gasket seating", "bolt hole"])]
+                        if lines:
+                            observations.extend(lines)
+                        elif not observations:
+                            observations = [raw_text] if raw_text else ["Visual inspection completed without notable anomaly."]
 
                     # Extract objects / findings
                     for obs in observations:
@@ -257,7 +294,7 @@ class ToolRegistry:
 
                     vlm_used = True
 
-                    return {
+                    res_dict = {
                         "status": "success",
                         "observations": observations,
                         "objects": list(set(objects))[:8],
@@ -270,8 +307,25 @@ class ToolRegistry:
                         "image_metadata": img_metadata,
                         "image_source": actual_image_path
                     }
+                    if pid_context:
+                        res_dict["pid_context"] = pid_context
+                    return res_dict
                 except Exception as e:
-                    pass
+                    if pid_context:
+                        return {
+                            "status": "success",
+                            "observations": observations,
+                            "objects": list(set(objects))[:8],
+                            "findings": findings,
+                            "confidence": 0.88,
+                            "model": "hybrid_cv_ocr",
+                            "vlm_model": None,
+                            "vlm_used": False,
+                            "defect_detected": len(observations) > 0,
+                            "image_metadata": img_metadata,
+                            "image_source": actual_image_path,
+                            "pid_context": pid_context
+                        }
 
             # Fallback when no image file is present: parse document text or prompt dynamically
             combined_input = (document_text or "") + "\n" + (prompt or "")
@@ -548,12 +602,121 @@ class ToolRegistry:
 
         self.register(Tool(
             name="ppt_generator",
-            description="Generates a professional 8-slide Executive Presentation in PowerPoint (.pptx) format covering findings, SOP matrix, risks, and sovereignty.",
+            description="Generates an official 8-slide PowerPoint (.pptx) Executive Presentation summarizing inspection findings, SOP compliance, and risk matrix.",
             func=_ppt_generator,
-            input_schema={"task_id": "string", "reference_document": "string", "title": "string"},
+            input_schema={"task_id": "string", "reference_document": "string"},
             output_schema={"status": "string", "output_path": "string", "filename": "string", "slides_count": "integer"}
+        ))
+
+        # 12. pid_analyzer tool
+        async def _pid_analyzer(
+            image_source: str,
+            query: Optional[str] = None,
+            **kwargs
+        ) -> Dict[str, Any]:
+            from backend.documents.pid_pipeline import pid_hybrid_pipeline
+            return await pid_hybrid_pipeline.analyze(image_source, query=query)
+
+        self.register(Tool(
+            name="pid_analyzer",
+            description="Performs hybrid visual, OCR, symbol, and topological line analysis on Process & Instrumentation Diagrams (P&IDs).",
+            func=_pid_analyzer,
+            input_schema={"image_source": "string", "query": "string"},
+            output_schema={"equipment": "list", "valves": "list", "instruments": "list", "connections": "list", "ocr_tags": "list"}
+        ))
+
+        # 13. engineering_report_generator tool (15-section DOCX)
+        def _eng_report_generator(
+            task_id: str,
+            drawing_name: str,
+            executive_summary: str = "",
+            detected_equipment: Optional[List[Dict[str, Any]]] = None,
+            detected_tags: Optional[List[Dict[str, Any]]] = None,
+            relevant_topology: Optional[List[Dict[str, Any]]] = None,
+            engineering_question: Optional[str] = None,
+            answer: Optional[str] = None,
+            evidence: Optional[List[str]] = None,
+            rag_references: Optional[List[Dict[str, Any]]] = None,
+            verification_status: str = "SUPPORTED",
+            confidence: Union[str, float] = "HIGH",
+            uncertain_items: Optional[List[Dict[str, Any]]] = None,
+            output_path: Optional[str] = None,
+            **kwargs
+        ) -> Dict[str, Any]:
+            target_path = output_path or os.path.join(os.getcwd(), "outputs", f"Engineering_Report_{task_id}.docx")
+            saved_path = create_engineering_report_docx(
+                output_path=target_path,
+                task_id=task_id,
+                drawing_name=drawing_name,
+                executive_summary=executive_summary,
+                detected_equipment=detected_equipment,
+                detected_tags=detected_tags,
+                relevant_topology=relevant_topology,
+                engineering_question=engineering_question,
+                answer=answer,
+                evidence=evidence,
+                rag_references=rag_references,
+                verification_status=verification_status,
+                confidence=confidence,
+                uncertain_items=uncertain_items,
+                is_offline=True
+            )
+            return {
+                "status": "success",
+                "output_path": saved_path,
+                "filename": os.path.basename(saved_path),
+                "sections_count": 15,
+                "type": "docx"
+            }
+
+        self.register(Tool(
+            name="engineering_report_generator",
+            description="Generates an official 15-section Engineering Analysis & Verification Report (.docx).",
+            func=_eng_report_generator,
+            input_schema={"task_id": "string", "drawing_name": "string", "executive_summary": "string"},
+            output_schema={"status": "string", "output_path": "string", "filename": "string"}
+        ))
+
+        # 14. engineering_excel_generator tool (5-sheet XLSX)
+        def _eng_excel_generator(
+            task_id: str,
+            equipment_data: Optional[List[Dict[str, Any]]] = None,
+            instruments_data: Optional[List[Dict[str, Any]]] = None,
+            connections_data: Optional[List[Dict[str, Any]]] = None,
+            verification_data: Optional[List[Dict[str, Any]]] = None,
+            rag_data: Optional[List[Dict[str, Any]]] = None,
+            output_path: Optional[str] = None,
+            title: str = "ConfigIQ Sovereign Engineering Analysis Workbook",
+            **kwargs
+        ) -> Dict[str, Any]:
+            target_path = output_path or os.path.join(os.getcwd(), "outputs", f"Engineering_Analysis_{task_id}.xlsx")
+            saved_path = create_engineering_analysis_xlsx(
+                output_path=target_path,
+                task_id=task_id,
+                equipment_data=equipment_data,
+                instruments_data=instruments_data,
+                connections_data=connections_data,
+                verification_data=verification_data,
+                rag_data=rag_data,
+                title=title
+            )
+            return {
+                "status": "success",
+                "output_path": saved_path,
+                "filename": os.path.basename(saved_path),
+                "sheets_count": 5,
+                "type": "xlsx"
+            }
+
+        self.register(Tool(
+            name="engineering_excel_generator",
+            description="Generates an official 5-sheet Engineering Analysis Workbook (.xlsx) with Equipment, Instruments, Connections, Verification, and RAG Evidence.",
+            func=_eng_excel_generator,
+            input_schema={"task_id": "string"},
+            output_schema={"status": "string", "output_path": "string", "filename": "string", "sheets_count": "integer"}
         ))
 
 
 tool_registry = ToolRegistry()
+
 

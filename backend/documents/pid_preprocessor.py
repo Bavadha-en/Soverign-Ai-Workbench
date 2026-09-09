@@ -177,6 +177,112 @@ class PIDPreprocessor:
 
         return tiles
 
+    def map_tile_bbox_to_original(
+        self,
+        tile: Dict[str, Any],
+        local_bbox: List[int]
+    ) -> List[int]:
+        """
+        Map a bounding box detected within a cropped tile back to original diagram coordinates.
+        local_bbox: [lx, ly, lw, lh] relative to tile crop
+        Returns: [ox, oy, ow, oh] in original image coordinates
+        """
+        tile_x = int(tile.get("x", 0))
+        tile_y = int(tile.get("y", 0))
+        lx, ly, lw, lh = [int(v) for v in local_bbox]
+        return [tile_x + lx, tile_y + ly, lw, lh]
+
+    def map_original_bbox_to_tile(
+        self,
+        tile: Dict[str, Any],
+        original_bbox: List[int]
+    ) -> Optional[List[int]]:
+        """
+        Map an original diagram bounding box into local tile coordinates if it intersects the tile.
+        original_bbox: [ox, oy, ow, oh]
+        Returns: [lx, ly, lw, lh] or None if outside tile
+        """
+        tx, ty = int(tile.get("x", 0)), int(tile.get("y", 0))
+        tw, th = int(tile.get("width", 0)), int(tile.get("height", 0))
+        ox, oy, ow, oh = [int(v) for v in original_bbox]
+
+        # Calculate intersection
+        ix_min = max(tx, ox)
+        iy_min = max(ty, oy)
+        ix_max = min(tx + tw, ox + ow)
+        iy_max = min(ty + th, oy + oh)
+
+        if ix_max <= ix_min or iy_max <= iy_min:
+            return None
+
+        return [ix_min - tx, iy_min - ty, ix_max - ix_min, iy_max - iy_min]
+
+    @staticmethod
+    def calculate_iou(boxA: List[int], boxB: List[int]) -> float:
+        """
+        Compute Intersection over Union (IoU) of two bounding boxes in [x, y, w, h] format.
+        """
+        xA = max(boxA[0], boxB[0])
+        yA = max(boxA[1], boxB[1])
+        xB = min(boxA[0] + boxA[2], boxB[0] + boxB[2])
+        yB = min(boxA[1] + boxA[3], boxB[1] + boxB[3])
+
+        inter_width = max(0, xB - xA)
+        inter_height = max(0, yB - yA)
+        inter_area = inter_width * inter_height
+
+        boxA_area = boxA[2] * boxA[3]
+        boxB_area = boxB[2] * boxB[3]
+        union_area = float(boxA_area + boxB_area - inter_area)
+
+        if union_area <= 0:
+            return 0.0
+        return round(inter_area / union_area, 4)
+
+    def merge_tile_detections(
+        self,
+        detections: List[Dict[str, Any]],
+        iou_threshold: float = 0.40
+    ) -> List[Dict[str, Any]]:
+        """
+        Deduplicate detections across overlapping tiles using coordinate IoU.
+        Each detection must have a 'bbox' in original diagram coordinates [x, y, w, h].
+        Preserves the highest-confidence detection and records merged tile provenance.
+        """
+        if not detections:
+            return []
+
+        # Sort detections by confidence descending
+        sorted_dets = sorted(detections, key=lambda d: d.get("confidence", 0.0), reverse=True)
+        merged: List[Dict[str, Any]] = []
+
+        for candidate in sorted_dets:
+            c_box = candidate.get("bbox", [0, 0, 0, 0])
+            duplicate = False
+            for existing in merged:
+                e_box = existing.get("bbox", [0, 0, 0, 0])
+                iou = self.calculate_iou(c_box, e_box)
+                # Check category compatibility
+                c_type = candidate.get("type") or candidate.get("symbol_type") or candidate.get("text")
+                e_type = existing.get("type") or existing.get("symbol_type") or existing.get("text")
+                type_matches = (c_type == e_type) or not c_type or not e_type
+
+                if iou >= iou_threshold and type_matches:
+                    duplicate = True
+                    # Record tile provenance
+                    existing.setdefault("merged_tiles", [])
+                    if "source_tile" in candidate and candidate["source_tile"] is not None:
+                        existing["merged_tiles"].append(candidate["source_tile"])
+                    break
+
+            if not duplicate:
+                entry = dict(candidate)
+                if "source_tile" in candidate and candidate["source_tile"] is not None:
+                    entry["merged_tiles"] = [candidate["source_tile"]]
+                merged.append(entry)
+
+        return merged
+
     def cv2_to_bytes(self, img: np.ndarray, ext: str = ".png") -> bytes:
         """Convert cv2 image to bytes without writing to disk."""
         success, encoded = cv2.imencode(ext, img)
@@ -191,3 +297,4 @@ class PIDPreprocessor:
 
 
 pid_preprocessor = PIDPreprocessor()
+

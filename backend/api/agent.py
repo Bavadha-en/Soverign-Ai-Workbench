@@ -8,6 +8,17 @@ from backend.agents.tool_registry import tool_registry
 router = APIRouter(prefix="/agent", tags=["Agent"])
 
 
+def _extract_verification_summary(results: Any) -> Any:
+    if not results or not isinstance(results, dict):
+        return None
+    if "claims" in results or "total_claims" in results:
+        return results
+    for v in results.values():
+        if isinstance(v, dict) and ("claims" in v or "total_claims" in v):
+            return v
+    return results
+
+
 @router.post("/run", response_model=AgentRunResponse)
 async def run_agent(request: AgentRunRequest):
     """
@@ -19,6 +30,8 @@ async def run_agent(request: AgentRunRequest):
         parameters=request.parameters
     )
 
+    verif_summary = _extract_verification_summary(state.verification_results)
+
     return AgentRunResponse(
         task_id=state.task_id,
         status=state.status.value.lower(),
@@ -27,7 +40,7 @@ async def run_agent(request: AgentRunRequest):
         final_output=state.final_output,
         sources=state.retrieved_context,
         generated_files=state.generated_files,
-        verification=state.verification_results,
+        verification=verif_summary,
         execution_trace=state.execution_trace,
         local=True
     )
@@ -52,4 +65,8 @@ async def get_agent_state(task_id: str):
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Agent task with ID '{task_id}' not found."
         )
-    return state.to_dict()
+    state_dict = state.to_dict()
+    verif_summary = _extract_verification_summary(state.verification_results)
+    if verif_summary:
+        state_dict["verification_results"] = verif_summary
+    return state_dict

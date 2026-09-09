@@ -104,6 +104,23 @@ class ToolExecutor:
             if not p.get("document_id") and state.document_ids:
                 p["document_id"] = state.document_ids[0]
 
+        elif tool_name == "pid_analyzer":
+            # Drawing image source from parameters, previous reader step, or state document_ids
+            image_src = p.get("image_source") or p.get("file_path")
+            if not image_src:
+                doc_step = (
+                    state.tool_results.get("load_engineering_diagram") or
+                    state.tool_results.get("extract_document") or
+                    state.tool_results.get("document_reader") or {}
+                )
+                image_src = doc_step.get("file_path") or doc_step.get("image_path")
+            if not image_src and state.document_ids:
+                image_src = state.document_ids[0]
+            if not image_src and hasattr(state, "document_id") and state.document_id:
+                image_src = state.document_id
+            p["image_source"] = image_src or ""
+            p["query"] = p.get("query") or state.user_request
+
         elif tool_name == "vision":
             doc_res = state.tool_results.get("extract_document", {})
             p["document_text"] = doc_res.get("text", "")
@@ -120,16 +137,44 @@ class ToolExecutor:
             base_prompt = p.get("prompt", state.user_request)
             evidence_blocks = []
 
-            # 1. VISUAL EVIDENCE (from VLM / vision tool)
-            vision_res = state.tool_results.get("analyze_scanned_pages", {})
-            if vision_res and vision_res.get("observations"):
+            # 1. VISUAL EVIDENCE (from VLM / vision tool / PID hybrid)
+            vision_res = (
+                state.tool_results.get("analyze_scanned_pages") or
+                state.tool_results.get("analyze_pid_diagram") or
+                state.tool_results.get("pid_analyzer") or {}
+            )
+            pid_ctx = (
+                vision_res.get("pid_context")
+                if (isinstance(vision_res, dict) and "pid_context" in vision_res)
+                else (vision_res if (isinstance(vision_res, dict) and "equipment" in vision_res) else None)
+            )
+
+            if pid_ctx:
+                vis_lines = []
+                for v in pid_ctx.get("valves", [])[:8]:
+                    vis_lines.append(f"- Valve: {v.get('label', v.get('id'))} (confidence: {v.get('confidence')})")
+                for eq in pid_ctx.get("equipment", [])[:6]:
+                    vis_lines.append(f"- Equipment: {eq.get('label', eq.get('id'))} (type: {eq.get('type')})")
+                for conn in pid_ctx.get("connections", [])[:8]:
+                    vis_lines.append(f"- Piping Connection: {conn.get('source')} -> {conn.get('destination', conn.get('target'))} ({conn.get('line_type', 'process')} line, status: {conn.get('status')})")
+                if pid_ctx.get("has_dashed_instrument_lines"):
+                    vis_lines.append("- Dashed Instrument Signal Lines: Present connecting transmitters and controllers")
+                if vis_lines:
+                    evidence_blocks.append("=== VISUAL EVIDENCE (DETERMINISTIC CV & TOPOLOGY GRAPH) ===\n" + "\n".join(vis_lines))
+
+                # OCR evidence
+                if pid_ctx.get("ocr_tags"):
+                    ocr_tag_strs = [f"- Tag: {t['text']} (confidence: {t['confidence']}, bbox: {t['bbox']})" for t in pid_ctx["ocr_tags"][:12]]
+                    evidence_blocks.append("=== OCR EVIDENCE (ALPHANUMERIC TAG IDENTIFIERS) ===\n" + "\n".join(ocr_tag_strs))
+
+            elif vision_res and vision_res.get("observations"):
                 obs_list = vision_res.get("observations", [])
                 evidence_blocks.append("=== VISUAL EVIDENCE (LOCAL VLM / MOONDREAM) ===\n" + "\n".join(f"- {o}" for o in obs_list))
 
             # 2. DOCUMENT EVIDENCE (from OCR / PDF / Reader)
             doc_res = state.tool_results.get("extract_document", {})
             doc_text = doc_res.get("text", "")
-            if doc_text:
+            if doc_text and not pid_ctx:
                 evidence_blocks.append("=== DOCUMENT EVIDENCE (EXTRACTED TEXT / OCR) ===\n" + doc_text[:2500])
 
             # 3. RETRIEVED EVIDENCE (from Local RAG)
@@ -147,11 +192,13 @@ class ToolExecutor:
             if evidence_blocks:
                 grounding_instr = (
                     "CRITICAL GROUNDING RULES:\n"
-                    "1. Ground all conclusions strictly on the visual, document, and SOP evidence above.\n"
-                    "2. Clearly distinguish between VISUAL EVIDENCE, DOCUMENT EVIDENCE, and MODEL INFERENCE in your analysis.\n"
-                    "3. Extract and state the Equipment ID, Inspection Date, Measured Values, Severity Rating, and Specific SOP Clauses."
+                    "1. Directly answer the PRIMARY OBJECTIVE / USER QUESTION first.\n"
+                    "2. Ground all conclusions strictly on the visual, document, and SOP evidence above.\n"
+                    "3. Clearly distinguish between VISUAL EVIDENCE, DOCUMENT EVIDENCE, and MODEL INFERENCE in your analysis.\n"
+                    "4. Extract and state the Equipment ID, Inspection Date, Measured Values, Severity Rating, and Specific SOP Clauses.\n"
+                    "5. If visual evidence is insufficient to answer any claim, explicitly state 'INSUFFICIENT VISUAL EVIDENCE' instead of guessing."
                 )
-                p["prompt"] = f"{base_prompt}\n\n" + "\n\n".join(evidence_blocks) + f"\n\n{grounding_instr}"
+                p["prompt"] = f"PRIMARY OBJECTIVE: {state.user_request}\n\n{base_prompt}\n\n" + "\n\n".join(evidence_blocks) + f"\n\n{grounding_instr}"
 
         elif tool_name == "code_executor":
             # Extract code generated in previous step if available
@@ -189,10 +236,36 @@ class ToolExecutor:
             p["task_type"] = p.get("task_type", "fact")
             if p["task_type"] == "fact":
                 claims = []
+                # 1. PID Analyzer results if present
+                pid_res = (
+                    state.tool_results.get("analyze_pid_diagram") or
+                    state.tool_results.get("pid_analyzer") or
+                    (state.tool_results.get("analyze_scanned_pages", {}).get("pid_context") if isinstance(state.tool_results.get("analyze_scanned_pages"), dict) else None) or
+                    (state.tool_results.get("vision", {}).get("pid_context") if isinstance(state.tool_results.get("vision"), dict) else None) or {}
+                )
+                if pid_res and isinstance(pid_res, dict) and ("equipment" in pid_res or "ocr_tags" in pid_res):
+                    for eq in pid_res.get("equipment", [])[:3]:
+                        tag = eq.get("tag") or eq.get("label") or eq.get("id")
+                        eq_type = eq.get("type", "equipment")
+                        claims.append(f"Equipment {tag} is identified as {eq_type} in drawing.")
+                    for conn in pid_res.get("connections", [])[:3]:
+                        claims.append(f"Process line {conn.get('line_id', 'line')} connects {conn.get('source')} to {conn.get('destination', conn.get('target'))}.")
+                    qa = pid_res.get("engineering_qa", {})
+                    if qa.get("answer"):
+                        claims.append(f"Analysis query answer: {qa.get('answer')[:120]}")
+
+                # 2. Vision tool observations
                 vision_res = state.tool_results.get("analyze_scanned_pages", {})
                 if vision_res and vision_res.get("observations"):
                     claims.extend(vision_res.get("observations")[:3])
-                llm_res = state.tool_results.get("analyze_findings", {})
+
+                # 3. LLM generated reasoning
+                llm_res = (
+                    state.tool_results.get("grounded_engineering_reasoning") or
+                    state.tool_results.get("analyze_findings") or
+                    state.model_outputs.get("grounded_engineering_reasoning") or
+                    state.model_outputs.get("analyze_findings") or {}
+                )
                 if llm_res and "text" in llm_res:
                     lines = [l.strip("- *") for l in llm_res["text"].split("\n") if len(l.strip()) > 20 and not l.startswith("#")]
                     claims.extend(lines[:4])
@@ -449,6 +522,73 @@ class ToolExecutor:
                 "human_review_notes": "Mandatory physical sign-off by Maintenance Superintendent before high-pressure hydrotest."
             }
 
+        elif tool_name == "engineering_report_generator":
+            p["task_id"] = state.task_id
+            pid_res = (
+                state.tool_results.get("analyze_pid_diagram") or
+                state.tool_results.get("pid_analyzer") or {}
+            )
+            llm_res = (
+                state.tool_results.get("grounded_engineering_reasoning") or
+                state.tool_results.get("analyze_findings") or
+                state.model_outputs.get("grounded_engineering_reasoning") or
+                state.model_outputs.get("analyze_findings") or {}
+            )
+
+            drw = p.get("drawing_name")
+            if not drw or drw == "P&ID Diagram":
+                if pid_res.get("image_path"):
+                    drw = os.path.basename(pid_res["image_path"])
+                elif state.document_ids:
+                    drw = os.path.basename(state.document_ids[0])
+                else:
+                    drw = "P&ID Diagram"
+            p["drawing_name"] = drw
+
+            p["detected_equipment"] = pid_res.get("equipment") or []
+            p["detected_tags"] = pid_res.get("ocr_tags") or []
+            p["relevant_topology"] = pid_res.get("connections") or []
+
+            p["engineering_question"] = state.user_request
+            qa = pid_res.get("engineering_qa", {})
+            p["answer"] = qa.get("answer") or (llm_res.get("text") if isinstance(llm_res, dict) else str(llm_res)) or "Analysis complete."
+            p["evidence"] = qa.get("evidence_used") or qa.get("evidence") or []
+
+            p["rag_references"] = state.retrieved_context
+            p["verification_status"] = "SUPPORTED" if state.is_verified else "NEEDS REVIEW"
+            p["confidence"] = qa.get("confidence_level", "HIGH")
+            p["uncertain_items"] = pid_res.get("uncertain_items") or []
+
+            exec_sum = p.get("executive_summary")
+            if not exec_sum:
+                num_eq = len(p["detected_equipment"])
+                num_tags = len(p["detected_tags"])
+                num_conn = len(p["relevant_topology"])
+                exec_sum = (
+                    f"ConfigIQ Sovereign AI Workbench autonomous engineering review for '{drw}'. "
+                    f"Detected {num_eq} major equipment components, {num_tags} alphanumeric tags, and {num_conn} verified topological connections. "
+                    f"Engineering query '{state.user_request}' answered with {p['confidence']} confidence and status '{p['verification_status']}'."
+                )
+            p["executive_summary"] = exec_sum
+
+        elif tool_name == "engineering_excel_generator":
+            p["task_id"] = state.task_id
+            pid_res = (
+                state.tool_results.get("analyze_pid_diagram") or
+                state.tool_results.get("pid_analyzer") or {}
+            )
+            p["equipment_data"] = pid_res.get("equipment", [])
+            p["instruments_data"] = pid_res.get("instruments", [])
+            p["connections_data"] = pid_res.get("connections", [])
+
+            verif_res = (
+                state.tool_results.get("verify_engineering_claims") or
+                state.tool_results.get("verification") or {}
+            )
+            p["verification_data"] = verif_res.get("claims", [])
+            p["rag_data"] = state.retrieved_context
+            p["title"] = p.get("title", "P&ID Engineering Analysis Workbook")
+
         return p
 
     def _integrate_result_to_state(
@@ -459,6 +599,8 @@ class ToolExecutor:
         state: AgentState
     ) -> None:
         """Store specific tool outputs into state collections."""
+        state.tool_results[tool_name] = result
+
         if tool_name == "rag_search" and isinstance(result, dict):
             if "sources" in result:
                 state.retrieved_context.extend(result["sources"])
@@ -473,11 +615,11 @@ class ToolExecutor:
             if "is_valid" in result:
                 state.is_verified = result["is_valid"]
 
-        elif tool_name in ["document_generator", "excel_generator", "ppt_generator"] and isinstance(result, dict):
+        elif tool_name in ["document_generator", "excel_generator", "ppt_generator", "engineering_report_generator", "engineering_excel_generator"] and isinstance(result, dict):
             if "output_path" in result:
                 if result["output_path"] not in state.generated_files:
                     state.generated_files.append(result["output_path"])
-                if tool_name == "document_generator":
+                if tool_name in ["document_generator", "engineering_report_generator"]:
                     state.generated_docx_path = result["output_path"]
 
     def _format_trace_message(
@@ -497,6 +639,11 @@ class ToolExecutor:
         elif tool_name == "vision":
             obs_cnt = len(result.get("observations", [])) if isinstance(result, dict) else 1
             return f"[{step_idx}] {tool_upper} - Identified {obs_cnt} structured inspection observations"
+        elif tool_name == "pid_analyzer":
+            eq_cnt = len(result.get("equipment", [])) if isinstance(result, dict) else 0
+            tag_cnt = len(result.get("ocr_tags", [])) if isinstance(result, dict) else 0
+            conn_cnt = len(result.get("connections", [])) if isinstance(result, dict) else 0
+            return f"[{step_idx}] {tool_upper} - Extracted {eq_cnt} symbols, {tag_cnt} OCR tags, and {conn_cnt} topological connections"
         elif tool_name == "rag_search":
             cnt = result.get("results_count", len(result.get("sources", []))) if isinstance(result, dict) else 3
             return f"[{step_idx}] {tool_upper} - Retrieved {cnt} relevant SOP chunks from local vector store"
@@ -524,6 +671,12 @@ class ToolExecutor:
         elif tool_name == "ppt_generator":
             filename = result.get("filename", "Executive_Summary.pptx") if isinstance(result, dict) else "Executive_Summary.pptx"
             return f"[{step_idx}] {tool_upper} - Generated PowerPoint executive presentation {filename}"
+        elif tool_name == "engineering_report_generator":
+            fn = result.get("filename", "Engineering_Report.docx") if isinstance(result, dict) else "Engineering_Report.docx"
+            return f"[{step_idx}] {tool_upper} - Generated 15-section verified engineering report {fn}"
+        elif tool_name == "engineering_excel_generator":
+            fn = result.get("filename", "Engineering_Analysis.xlsx") if isinstance(result, dict) else "Engineering_Analysis.xlsx"
+            return f"[{step_idx}] {tool_upper} - Generated 5-sheet engineering analysis workbook {fn}"
         return f"[{step_idx}] {tool_upper} - Completed action '{action}'"
 
 

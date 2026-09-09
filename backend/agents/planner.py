@@ -29,7 +29,18 @@ class Planner:
         if any(kw in task_lower for kw in calc_keywords):
             return self._plan_engineering_calculation(task, parameters)
 
-        # 2. Document Inspection & Approval Note Workflow (Primary SIH Demo)
+        # 2. Dedicated P&ID Topological & Engineering Analysis Workflow
+        pid_eng_keywords = [
+            "topology", "piping connection", "extract topology", "engineering report",
+            "engineering workbook", "diagram analysis", "symbol extraction"
+        ]
+        is_pid_eng = any(kw in task_lower for kw in pid_eng_keywords) or (
+            ("p&id" in task_lower or "pid" in task_lower) and not any(k in task_lower for k in ["sop", "approval note", "pressure vessel sop"])
+        )
+        if is_pid_eng:
+            return self._plan_pid_engineering_analysis(task, primary_doc_id, parameters)
+
+        # 3. Document Inspection & Approval Note Workflow (Primary SIH Demo)
         doc_keywords = [
             "inspection", "approval note", "report", "sop", "valve", "corrosion",
             "review", "document", "scanned", "pdf", "generate approval"
@@ -37,8 +48,73 @@ class Planner:
         if any(kw in task_lower for kw in doc_keywords) or doc_ids:
             return self._plan_inspection_and_approval(task, primary_doc_id, parameters)
 
-        # 3. General Knowledge Base & Technical Reasoning Workflow
+        # 4. General Knowledge Base & Technical Reasoning Workflow
         return self._plan_general_reasoning(task, parameters)
+
+    def _plan_pid_engineering_analysis(
+        self,
+        task: str,
+        document_id: Optional[str],
+        parameters: Optional[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        """
+        Construct verified workflow for P&ID engineering diagrams:
+        1. document_reader -> 2. pid_analyzer -> 3. rag_search -> 4. llm_generate -> 5. verification -> 6. engineering_report_generator -> 7. engineering_excel_generator
+        """
+        drw_name = parameters.get("drawing_name", "P&ID Diagram") if parameters else "P&ID Diagram"
+        plan = [
+            {
+                "step": 1,
+                "action": "extract_document",
+                "tool": "document_reader",
+                "description": "Load and inspect high-resolution P&ID engineering drawing",
+                "params": {"document_id": document_id, "file_path": parameters.get("file_path") if parameters else None}
+            },
+            {
+                "step": 2,
+                "action": "analyze_pid_diagram",
+                "tool": "pid_analyzer",
+                "description": "Execute deterministic hybrid P&ID extraction (rapid OCR tags, symbols, line topology tracing)",
+                "params": {"query": task}
+            },
+            {
+                "step": 3,
+                "action": "retrieve_governing_standards",
+                "tool": "rag_search",
+                "description": "Retrieve governing ASME B31.3 & ISA-5.1 standards from local vector store",
+                "params": {"query": f"ISA-5.1 instrument tags, piping connections, and equipment standards for {task}", "top_k": 3}
+            },
+            {
+                "step": 4,
+                "action": "grounded_engineering_reasoning",
+                "tool": "llm_generate",
+                "description": "Perform tripartite grounded engineering reasoning using local open-weight model",
+                "params": {"prompt": task}
+            },
+            {
+                "step": 5,
+                "action": "verify_engineering_claims",
+                "tool": "verification",
+                "description": "Verify extracted claims against diagram visual ground facts and local SOPs",
+                "params": {"task_type": "fact"}
+            },
+            {
+                "step": 6,
+                "action": "generate_engineering_report",
+                "tool": "engineering_report_generator",
+                "description": "Generate official 15-section verified Engineering Analysis Word (.docx) Report",
+                "params": {"drawing_name": drw_name}
+            },
+            {
+                "step": 7,
+                "action": "generate_engineering_workbook",
+                "tool": "engineering_excel_generator",
+                "description": "Generate official 5-sheet Engineering Analysis Workbook (.xlsx)",
+                "params": {"title": "P&ID Engineering Analysis Workbook"}
+            }
+        ]
+        return plan
+
 
     def _plan_inspection_and_approval(
         self,
@@ -64,7 +140,7 @@ class Planner:
                 "action": "analyze_scanned_pages",
                 "tool": "vision",
                 "description": "Perform visual and multimodal defect analysis on inspection report",
-                "params": {"prompt": "Analyze inspection findings for corrosion, damage, and wear."}
+                "params": {"prompt": task}
             },
             {
                 "step": 3,

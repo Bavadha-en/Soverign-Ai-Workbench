@@ -1,0 +1,52 @@
+[
+  {
+    "id": "Q1_PID_VALVE_LOCATION",
+    "category": "P&ID Diagram Question",
+    "task": "Where is valve V-1063 located in the technical drawing?",
+    "elapsed_sec": 59.42,
+    "steps": 6,
+    "claims_count": 12,
+    "deliverables_count": 1,
+    "output_snippet": "### Sovereign Technical Assessment & Answer\n\n**User Objective**: Where is valve V-1063 located in the technical drawing?\n\n**Direct Answer**: 'V-1063' is located at coordinates x=778, y=343 (width=61px"
+  },
+  {
+    "id": "Q2_PID_SYSTEM_B_EQUIPMENT",
+    "category": "P&ID System B Question",
+    "task": "Identify all equipment and valves present in P&ID System B drawing",
+    "elapsed_sec": 45.9,
+    "steps": 7,
+    "claims_count": 11,
+    "deliverables_count": 2,
+    "output_snippet": "### Sovereign Technical Assessment & Answer\n\n**User Objective**: Identify all equipment and valves present in P&ID System B drawing\n\n**Direct Answer**: Operating reference from standard_isa_5_1_pid_sy"
+  },
+  {
+    "id": "Q3_INSPECTION_SOP_REVIEW",
+    "category": "Inspection Report SOP Review",
+    "task": "Review the attached inspection report for pump P-101 against SOP-M-104 vibration limits and flag deviations with source clauses",
+    "elapsed_sec": 30.99,
+    "steps": 6,
+    "claims_count": 7,
+    "deliverables_count": 1,
+    "output_snippet": "### Sovereign Technical Assessment & Answer\n\n**User Objective**: Review the attached inspection report for pump P-101 against SOP-M-104 vibration limits and flag deviations with source clauses\n**TASK "
+  },
+  {
+    "id": "Q4_CALCULATION_PRESSURE_DROP",
+    "category": "Engineering Calculation",
+    "task": "Calculate Darcy-Weisbach pressure drop across a 100m commercial steel pipe with 6-inch diameter and flow rate 0.025 m3/s",
+    "elapsed_sec": 85.58,
+    "steps": 7,
+    "claims_count": 0,
+    "deliverables_count": 1,
+    "output_snippet": "### Engineering Calculation Verified Result\n\n```text\n\n```\n\n- **Execution Status**: Success (Exit code: 0)\n- **Sandbox Environment**: Isolated local Python runtime\n- **Verification**: Passed physical r"
+  },
+  {
+    "id": "Q5_GENERAL_SOP_KNOWLEDGE",
+    "category": "General Technical / SOP Reasoning",
+    "task": "What are the mandatory electrical isolation and LOTO steps required before valve maintenance under SOP-SAF-001?",
+    "elapsed_sec": 95.96,
+    "steps": 6,
+    "claims_count": 5,
+    "deliverables_count": 1,
+    "output_snippet": "### Sovereign Technical Assessment & Answer\n\n**User Objective**: What are the mandatory electrical isolation and LOTO steps required before valve maintenance under SOP-SAF-001?\n**TASK ID**: `task_74d3"
+  }
+]

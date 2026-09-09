@@ -16,58 +16,99 @@ ISA_INSTRUMENT_PREFIXES = {
     "TT", "TI", "TIC", "TIT",
     "CV", "PV", "FV", "LV", "TV", "XV", "SV", "PSV", "PRV", "SDV", "BDV", "ESDV",
     "FO", "RO", "FE", "TE", "LE", "PE",
-    "SPG", "AT", "AI", "ZT", "ZI", "PDT", "PDI", "PDIC"
+    "SPG", "SPN", "SPA", "SPD", "AT", "AI", "ZT", "ZI", "PDT", "PDI", "PDIC"
 }
 
 EQUIPMENT_PREFIXES = {
     "P", "PU", "PUMP",
     "V", "TK", "T", "VESSEL", "TANK",
-    "E", "HE", "EX",
+    "E", "HE", "EX", "HEX",
     "C", "COMP", "K",
     "R", "REACTOR",
     "F", "FL", "FILTER",
-    "S", "STR", "STRAINER"
+    "S", "STR", "STRAINER",
+    "M", "MOT", "MOTOR",
+    "BL", "BLOWER",
+    "NOTE", "CBJ",
+    "L", "PL"
 }
+
+KNOWN_TAG_PREFIXES = ISA_INSTRUMENT_PREFIXES | EQUIPMENT_PREFIXES
 
 
 def normalize_engineering_tag(raw_text: str) -> Optional[str]:
     """
     Tolerantly normalize OCR strings into standard ISA-5.1 / engineering equipment tags.
-    Examples:
-      'P101' -> 'P-101'
-      'CV101' -> 'CV-101'
-      'PT 1027' -> 'PT-1027'
-      'PI-1027' -> 'PI-1027'
+    Handles delimiters (spaces, underscores, hyphens, colons) and unseparated prefixes:
+      'P101', 'P 101', 'P_101' -> 'P-101'
+      'T101', 'T 101', 'T_101' -> 'T-101'
+      'V101', 'V 101', 'V_101' -> 'V-101'
+      'E101', 'E 101', 'E_101' -> 'E-101'
+      'FIC101', 'FIC 101', 'FIC_101' -> 'FIC-101'
+      'LIC101', 'LIC 101', 'LIC_101' -> 'LIC-101'
+      'PIC101', 'PIC 101', 'PIC_101' -> 'PIC-101'
+      'XV101', 'XV 101', 'XV_101' -> 'XV-101'
       'FO 1035' -> 'FO-1035'
+      'PI-1027' -> 'PI-1027'
       'SPG 4002' -> 'SPG-4002'
-      'V-101' -> 'V-101'
+    Does NOT blindly normalize arbitrary non-engineering text (e.g. 'PUMP', 'INLET', 'SHEET 1').
     """
     if not raw_text:
         return None
     s = raw_text.strip().upper()
 
-    # Clean punctuation around the tag
-    s = re.sub(r"^[^\w]+|[^\w]+$", "", s)
+    # Clean leading/trailing non-alphanumeric punctuation (except quote marks for pipe sizes)
+    s = re.sub(r"^[^A-Z0-9\"]+|[^A-Z0-9]+$", "", s)
 
-    # Direct match: LETTERS followed by optional separator followed by NUMBERS
-    # E.g., PT-1027, P-101, CV101, FO 1035, SPG-4002
-    m = re.match(r"^([A-Z]{1,5})[\s_\-\.:/]*([0-9]{2,5}[A-Z]?)$", s)
-    if m:
-        prefix, num = m.group(1), m.group(2)
-        if prefix in ISA_INSTRUMENT_PREFIXES or prefix in EQUIPMENT_PREFIXES or len(prefix) <= 4:
+    # 1. Check piping line notation: e.g. '2"-PL-101', '3"-L-102', 'L-101'
+    m_pipe = re.match(r'^(?:(\d+["\']?)-)?([A-Z]{1,3})[\s_\-]?([0-9]{2,5}[A-Z]?)$', s)
+    if m_pipe:
+        size, prefix, num = m_pipe.group(1), m_pipe.group(2), m_pipe.group(3)
+        if prefix in {"L", "PL", "CW", "IA", "PW", "RW", "ST", "SL", "FG", "DG"}:
+            size_prefix = f"{size}-" if size else ""
+            return f"{size_prefix}{prefix}-{num}"
+
+    # 2. Match with explicit separator (spaces, underscores, hyphens, slashes, colons)
+    # E.g. P 101, P_101, P-101, FIC 101, FIC_101, XV-101, T 101, E_101
+    m_sep = re.match(r"^([A-Z]{1,5})[\s_\-\.:/]+([0-9]{1,5}[A-Z]?)$", s)
+    if m_sep:
+        prefix, num = m_sep.group(1), m_sep.group(2)
+        if prefix in KNOWN_TAG_PREFIXES or len(prefix) <= 3:
+            # Clean single letter pump / tank / valve / exchanger
+            if prefix in {"PU", "PUMP"}:
+                return f"P-{num}"
+            if prefix in {"TK", "TANK"}:
+                return f"T-{num}"
+            if prefix in {"HEX", "EX"}:
+                return f"E-{num}"
+            if prefix in {"COMP"}:
+                return f"C-{num}"
             return f"{prefix}-{num}"
 
-    # Valve prefix match: V101 -> V-101, V-101 -> V-101
-    m_valve = re.match(r"^(V|CV|PV|FV|LV|TV|XV|SV|PSV|ESDV)[\s_\-]?([0-9]{2,5}[A-Z]?)$", s)
-    if m_valve:
-        return f"{m_valve.group(1)}-{m_valve.group(2)}"
+    # 3. Match contiguous token without separator: e.g. P101, T101, V101, E101, FIC101, LIC101, PIC101, XV101
+    # We match against known prefixes first (longest prefix match)
+    for pfx in sorted(KNOWN_TAG_PREFIXES, key=lambda x: -len(x)):
+        if s.startswith(pfx):
+            rem = s[len(pfx):].strip(" _-")
+            if re.match(r"^[0-9]{2,5}[A-Z]?$", rem):
+                norm_pfx = pfx
+                if norm_pfx in {"PU", "PUMP"}:
+                    norm_pfx = "P"
+                elif norm_pfx in {"TK", "TANK"}:
+                    norm_pfx = "T"
+                elif norm_pfx in {"HEX", "EX"}:
+                    norm_pfx = "E"
+                elif norm_pfx in {"COMP"}:
+                    norm_pfx = "C"
+                return f"{norm_pfx}-{rem}"
 
-    # Pump prefix match: P101 -> P-101, P-101 -> P-101
-    m_pump = re.match(r"^(P|PU)[\s_\-]?([0-9]{2,5}[A-Z]?)$", s)
-    if m_pump:
-        return f"P-{m_pump.group(2)}"
+    # 4. Specific known multi-word patterns like NOTE-15, CBJ-01
+    m_note = re.match(r"^(NOTE|CBJ|DWG|SOP)[\s_\-]?([0-9]{1,4})$", s)
+    if m_note:
+        return f"{m_note.group(1)}-{m_note.group(2)}"
 
     return None
+
 
 
 class OCREngine:
@@ -154,15 +195,26 @@ class OCREngine:
     def extract_engineering_tags(
         self,
         source: Union[str, bytes, np.ndarray],
-        min_confidence: float = 0.50
+        min_confidence: float = 0.50,
+        source_tile: Optional[int] = None
     ) -> List[Dict[str, Any]]:
         """
         Extract normalized engineering equipment and instrumentation tags from diagram.
         Includes tolerant regex normalization and 2-line instrument bubble merging (e.g. PT over 1027).
+        Preserves raw OCR text, normalized tag, calibrated confidence, bounding box, and source tile.
         """
         raw_items = self.perform_ocr_detailed(source)
         if not raw_items:
             return []
+
+        def _conf_level(c: float) -> str:
+            if c >= 0.85:
+                return "HIGH"
+            if c >= 0.65:
+                return "MEDIUM"
+            if c >= 0.45:
+                return "LOW"
+            return "UNKNOWN"
 
         tags: List[Dict[str, Any]] = []
         consumed_indices = set()
@@ -173,11 +225,15 @@ class OCREngine:
                 continue
             normalized = normalize_engineering_tag(item["text"])
             if normalized:
+                c_val = item["confidence"]
                 tags.append({
                     "text": normalized,
+                    "normalized_tag": normalized,
                     "raw_text": item["text"],
-                    "confidence": item["confidence"],
+                    "confidence": c_val,
+                    "confidence_level": _conf_level(c_val),
                     "bbox": item["bbox"],
+                    "source_tile": source_tile,
                     "source": "ocr"
                 })
                 consumed_indices.add(i)
@@ -217,9 +273,12 @@ class OCREngine:
                             combined_conf = round((top["confidence"] + bot["confidence"]) / 2.0, 3)
                             tags.append({
                                 "text": merged_tag,
+                                "normalized_tag": merged_tag,
                                 "raw_text": f"{top['text']} / {bot['text']}",
                                 "confidence": combined_conf,
+                                "confidence_level": _conf_level(combined_conf),
                                 "bbox": combined_bbox,
+                                "source_tile": source_tile,
                                 "source": "ocr"
                             })
                             consumed_indices.add(i)
@@ -236,6 +295,7 @@ class OCREngine:
                 unique_tags.append(t)
 
         return unique_tags
+
 
     def perform_ocr(self, source: Union[str, bytes]) -> str:
         """

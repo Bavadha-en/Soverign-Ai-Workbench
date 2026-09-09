@@ -1,6 +1,12 @@
 import os
 from urllib.parse import urlparse
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 # Allowed local hostnames and IP addresses for strict network sovereignty
 ALLOWED_LOCAL_HOSTS = {"localhost", "127.0.0.1", "0.0.0.0", "::1", "[::1]"}
 
@@ -22,6 +28,28 @@ def is_local_url(url: str) -> bool:
         return False
 
 
+def detect_default_llm_provider() -> str:
+    """
+    Detect default LLM provider. If LLM_PROVIDER is explicitly set, use it.
+    Otherwise, if local Ollama instance is reachable at OLLAMA_BASE_URL, auto-select 'ollama'.
+    Falls back safely to 'mock' if Ollama is not running.
+    """
+    env_provider = os.getenv("LLM_PROVIDER")
+    if env_provider:
+        return env_provider.lower().strip()
+
+    ollama_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+    try:
+        import urllib.request
+        req = urllib.request.Request(f"{ollama_url.rstrip('/')}/api/tags", headers={"User-Agent": "ConfigIQ"})
+        with urllib.request.urlopen(req, timeout=1.5) as resp:
+            if resp.status == 200:
+                return "ollama"
+    except Exception:
+        pass
+    return "mock"
+
+
 class Settings:
     """ConfigIQ On-Premise System Configuration."""
 
@@ -32,7 +60,7 @@ class Settings:
     DEBUG: bool = os.getenv("DEBUG", "True").lower() in ("true", "1", "yes")
 
     # LLM Settings
-    LLM_PROVIDER: str = os.getenv("LLM_PROVIDER", "mock")
+    LLM_PROVIDER: str = detect_default_llm_provider()
     OLLAMA_BASE_URL: str = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 
 

@@ -1,4 +1,42 @@
-export type FactVerificationStatus = 'SUPPORTED' | 'UNSUPPORTED' | 'NEEDS REVIEW';
+export type FactVerificationStatus =
+  | 'SUPPORTED'
+  | 'SUPPORTED_BY_IMAGE'
+  | 'SUPPORTED_BY_OCR'
+  | 'SUPPORTED_BY_RAG'
+  | 'MODEL_INFERENCE'
+  | 'UNSUPPORTED'
+  | 'NEEDS REVIEW'
+  | 'NEEDS_REVIEW';
+
+export interface PidItem {
+  id: string;
+  label?: string;
+  type?: string;
+  confidence?: number;
+  bbox?: [number, number, number, number];
+  source?: string;
+}
+
+export interface PidConnection {
+  source: string;
+  target: string;
+  line_type?: string;
+  confidence?: number;
+  status?: string;
+  distance_px?: number;
+}
+
+export interface PidContext {
+  equipment?: PidItem[];
+  valves?: PidItem[];
+  instruments?: PidItem[];
+  connections?: PidConnection[];
+  ocr_tags?: Array<{ text: string; confidence: number; bbox: [number, number, number, number]; source?: string }>;
+  detected_symbols?: Array<{ symbol_type: string; category: string; confidence: number; bbox: [number, number, number, number] }>;
+  uncertain_items?: PidItem[];
+  pipeline_latency_sec?: number;
+  has_dashed_instrument_lines?: boolean;
+}
 
 export interface HealthResponse {
   status: string;
@@ -69,6 +107,12 @@ export interface ToolDefinition {
 }
 
 export type ToolInfo = ToolDefinition;
+
+/** Actual model names configured per role (GET /chat/registry). */
+export interface ModelRegistryResponse {
+  registry: Record<string, string>;
+  status: string;
+}
 
 /** Aggregate counters rendered on the overview page (GET /stats). */
 export interface SystemStats {

@@ -239,3 +239,110 @@ class CreateExcelOutput(BaseModel):
     error: Optional[str] = None
 
 
+# --- Phase 1: Structured Engineering Analysis Input/Output Contract ---
+
+class EngineeringAnalysisInput(BaseModel):
+    image_path: Optional[str] = Field(None, description="Path to P&ID diagram, drawing or scan")
+    drawing_type: str = Field("P&ID", description="Type of engineering drawing: P&ID, PFD, isometric, electrical")
+    document_path: Optional[str] = Field(None, description="Path to scanned engineering document or report")
+    question: Optional[str] = Field(None, description="Specific engineering question or query")
+    reference_document_ids: List[str] = Field(default_factory=list, description="Optional governing SOP or manual references")
+    parameters: Dict[str, Any] = Field(default_factory=dict, description="Pipeline configuration and options")
+
+
+class VisualEvidenceItem(BaseModel):
+    id: str = Field(..., description="Unique element identifier")
+    type: str = Field(..., description="Category: equipment, valve, instrument, symbol, pipe, tag")
+    label: str = Field(..., description="Readable label or tag")
+    tag: Optional[str] = Field(None, description="Normalized alphanumeric tag (e.g. P-101, PI-1027)")
+    raw_tag: Optional[str] = Field(None, description="Raw OCR token before normalization")
+    bbox: List[int] = Field(..., description="Bounding box in original image coordinates [x, y, w, h]")
+    coordinates: Optional[Dict[str, Any]] = Field(None, description="Normalized or centroid coordinates")
+    confidence: float = Field(..., description="Numeric confidence [0.0, 1.0]")
+    confidence_level: str = Field("HIGH", description="Confidence category: HIGH, MEDIUM, LOW, UNKNOWN")
+    detector: str = Field("deterministic_cv", description="Detector origin: deterministic_cv, rapid_ocr, template_match, moondream_vlm")
+    visual_evidence: Optional[str] = Field(None, description="Description of visual morphology or geometric contour")
+    source_image: Optional[str] = Field(None, description="Origin file name or URI")
+    source_tile: Optional[int] = Field(None, description="Sub-tile index if detected in a crop")
+
+
+class TopologyNode(BaseModel):
+    id: str
+    type: str = Field(..., description="Node classification: pump, valve, instrument, vessel, etc.")
+    tag: Optional[str] = None
+    label: str
+    bbox: List[int]
+    confidence: float = 0.90
+    source: str = "topology_extractor"
+
+
+class TopologyEdge(BaseModel):
+    source: str = Field(..., description="Source node ID or tag")
+    destination: str = Field(..., description="Destination node ID or tag")
+    line_id: Optional[str] = Field(None, description="Piping line identifier (e.g. L-101)")
+    line_type: str = Field("process", description="Line classification: process, instrument_dashed, utility")
+    evidence: str = Field(..., description="Grounding evidence for connection (e.g. continuous_horizontal_line_trace)")
+    confidence: float = Field(0.80, description="Connection confidence score [0.0, 1.0]")
+    confidence_level: str = Field("HIGH", description="HIGH, MEDIUM, LOW, UNKNOWN")
+    evidence_coords: Optional[List[List[int]]] = Field(None, description="Sample coordinates along traced line")
+    status: str = Field("connected", description="Connection status: connected, connection_uncertain, NEEDS_REVIEW")
+
+
+class StructuredVisualEvidence(BaseModel):
+    equipment: List[VisualEvidenceItem] = Field(default_factory=list)
+    valves: List[VisualEvidenceItem] = Field(default_factory=list)
+    instruments: List[VisualEvidenceItem] = Field(default_factory=list)
+    symbols: List[VisualEvidenceItem] = Field(default_factory=list)
+    ocr_tags: List[VisualEvidenceItem] = Field(default_factory=list)
+    line_segments: List[Dict[str, Any]] = Field(default_factory=list)
+    intersections_count: int = 0
+    has_dashed_instrument_lines: bool = False
+
+
+class KnowledgeEvidenceItem(BaseModel):
+    chunk_id: Optional[str] = None
+    document: str
+    page: Optional[int] = 1
+    section: Optional[str] = None
+    content: str
+    relevance_score: float = 0.0
+
+
+class ModelInference(BaseModel):
+    vlm_interpretation: Optional[str] = None
+    llm_reasoning: Optional[str] = None
+    assumptions: List[str] = Field(default_factory=list)
+    uncertainty_notes: List[str] = Field(default_factory=list)
+    has_conflicts: bool = False
+    conflicts: List[str] = Field(default_factory=list)
+
+
+class EngineeringClaimVerification(BaseModel):
+    claim: str
+    status: str = Field(..., description="SUPPORTED_BY_IMAGE, SUPPORTED_BY_OCR, SUPPORTED_BY_TOPOLOGY, SUPPORTED_BY_RAG, MODEL_INFERENCE, UNSUPPORTED, NEEDS_REVIEW")
+    evidence: Optional[str] = None
+    confidence: float = 1.0
+    confidence_level: str = "HIGH"
+    source_doc_or_component: Optional[str] = None
+
+
+class EngineeringAnalysisOutput(BaseModel):
+    title: str = "ConfigIQ Sovereign Engineering Analysis"
+    input_drawing: str
+    executive_summary: str
+    structured_visual_evidence: StructuredVisualEvidence
+    topology_nodes: List[TopologyNode] = Field(default_factory=list)
+    topology_edges: List[TopologyEdge] = Field(default_factory=list)
+    knowledge_evidence: List[KnowledgeEvidenceItem] = Field(default_factory=list)
+    model_inference: ModelInference = Field(default_factory=ModelInference)
+    question: Optional[str] = None
+    answer: Optional[str] = None
+    verification_summary: Dict[str, Any] = Field(default_factory=dict)
+    claims_verification: List[EngineeringClaimVerification] = Field(default_factory=list)
+    confidence_level: str = "HIGH"
+    uncertain_items: List[Dict[str, Any]] = Field(default_factory=list)
+    offline_status: bool = True
+    timestamp: str
+
+
+

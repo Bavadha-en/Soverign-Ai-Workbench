@@ -1,0 +1,464 @@
+{
+  "timestamp": "2026-09-09T14:47:36.196386+00:00",
+  "diagram": "pid.png",
+  "query": "Analyze the piping connections and instrument tags between the inlet flow orifice FO-1035 and pressure indicator PI-1027.",
+  "ocr_result": {
+    "tags_detected_count": 10,
+    "tags": [
+      "NOTE-15",
+      "SPA-4002",
+      "SPD-4007",
+      "V-1063",
+      "SPN-4007",
+      "CBJ-01",
+      "FO-1035",
+      "PI-1027",
+      "PT-1027",
+      "ZBJ-02"
+    ],
+    "sample_details": [
+      {
+        "text": "NOTE-15",
+        "raw_text": "NOTE15",
+        "confidence": 0.998,
+        "bbox": [
+          757,
+          90,
+          106,
+          28
+        ],
+        "source": "ocr"
+      },
+      {
+        "text": "SPA-4002",
+        "raw_text": "SPA / 4002",
+        "confidence": 0.998,
+        "bbox": [
+          133,
+          528,
+          76,
+          76
+        ],
+        "source": "ocr"
+      },
+      {
+        "text": "SPD-4007",
+        "raw_text": "SPD / 4007",
+        "confidence": 0.998,
+        "bbox": [
+          1290,
+          789,
+          76,
+          75
+        ],
+        "source": "ocr"
+      },
+      {
+        "text": "V-1063",
+        "raw_text": "V1063",
+        "confidence": 0.997,
+        "bbox": [
+          778,
+          343,
+          61,
+          22
+        ],
+        "source": "ocr"
+      },
+      {
+        "text": "SPN-4007",
+        "raw_text": "SPN / 4007",
+        "confidence": 0.997,
+        "bbox": [
+          322,
+          475,
+          74,
+          75
+        ],
+        "source": "ocr"
+      },
+      {
+        "text": "CBJ-01",
+        "raw_text": "CBJ01",
+        "confidence": 0.994,
+        "bbox": [
+          75,
+          973,
+          83,
+          33
+        ],
+        "source": "ocr"
+      },
+      {
+        "text": "FO-1035",
+        "raw_text": "FO / 1035",
+        "confidence": 0.992,
+        "bbox": [
+          848,
+          274,
+          58,
+          65
+        ],
+        "source": "ocr"
+      },
+      {
+        "text": "PI-1027",
+        "raw_text": "PI / 1027",
+        "confidence": 0.954,
+        "bbox": [
+          652,
+          41,
+          56,
+          70
+        ],
+        "source": "ocr"
+      },
+      {
+        "text": "PT-1027",
+        "raw_text": "PT / 1027",
+        "confidence": 0.945,
+        "bbox": [
+          652,
+          230,
+          57,
+          63
+        ],
+        "source": "ocr"
+      },
+      {
+        "text": "ZBJ-02",
+        "raw_text": "\u2193ZBJ02",
+        "confidence": 0.871,
+        "bbox": [
+          64,
+          932,
+          96,
+          41
+        ],
+        "source": "ocr"
+      }
+    ]
+  },
+  "symbols": {
+    "detected_count": 79,
+    "symbols_sample": [
+      {
+        "symbol_type": "Triangle",
+        "category": "component",
+        "bbox": [
+          285,
+          553,
+          34,
+          42
+        ],
+        "confidence": 1.0,
+        "aspect_ratio": 0.81,
+        "source": "deterministic"
+      },
+      {
+        "symbol_type": "Valve Check",
+        "category": "valve",
+        "bbox": [
+          564,
+          362,
+          114,
+          45
+        ],
+        "confidence": 1.0,
+        "aspect_ratio": 2.53,
+        "source": "deterministic"
+      },
+      {
+        "symbol_type": "Control Valve Globe",
+        "category": "valve",
+        "bbox": [
+          824,
+          294,
+          44,
+          49
+        ],
+        "confidence": 0.996,
+        "aspect_ratio": 0.9,
+        "source": "deterministic"
+      },
+      {
+        "symbol_type": "Triangle",
+        "category": "component",
+        "bbox": [
+          1156,
+          275,
+          78,
+          78
+        ],
+        "confidence": 0.993,
+        "aspect_ratio": 1.0,
+        "source": "deterministic"
+      },
+      {
+        "symbol_type": "Control Valve Globe",
+        "category": "valve",
+        "bbox": [
+          626,
+          248,
+          45,
+          50
+        ],
+        "confidence": 0.992,
+        "aspect_ratio": 0.9,
+        "source": "deterministic"
+      },
+      {
+        "symbol_type": "Valve Check",
+        "category": "valve",
+        "bbox": [
+          1443,
+          394,
+          51,
+          28
+        ],
+        "confidence": 0.991,
+        "aspect_ratio": 1.82,
+        "source": "deterministic"
+      },
+      {
+        "symbol_type": "Triangle",
+        "category": "component",
+        "bbox": [
+          1290,
+          786,
+          78,
+          78
+        ],
+        "confidence": 0.99,
+        "aspect_ratio": 1.0,
+        "source": "deterministic"
+      },
+      {
+        "symbol_type": "Arrowhead + Triangle",
+        "category": "flow_arrow",
+        "bbox": [
+          133,
+          526,
+          78,
+          78
+        ],
+        "confidence": 0.989,
+        "aspect_ratio": 1.0,
+        "source": "deterministic"
+      },
+      {
+        "symbol_type": "Triangle",
+        "category": "component",
+        "bbox": [
+          321,
+          472,
+          78,
+          78
+        ],
+        "confidence": 0.987,
+        "aspect_ratio": 1.0,
+        "source": "deterministic"
+      },
+      {
+        "symbol_type": "Control Valve Globe",
+        "category": "valve",
+        "bbox": [
+          626,
+          77,
+          44,
+          42
+        ],
+        "confidence": 0.987,
+        "aspect_ratio": 1.05,
+        "source": "deterministic"
+      }
+    ]
+  },
+  "connections": {
+    "count": 106,
+    "connections_sample": [
+      {
+        "source": "NOTE-15",
+        "target": "PI-1027",
+        "line_type": "instrument_dashed",
+        "confidence": 0.71,
+        "distance_px": 133.0,
+        "status": "connected"
+      },
+      {
+        "source": "SPD-4007",
+        "target": "Control_31",
+        "line_type": "instrument_dashed",
+        "confidence": 0.73,
+        "distance_px": 78.8,
+        "status": "connected"
+      },
+      {
+        "source": "V-1063",
+        "target": "Control_19",
+        "line_type": "instrument_dashed",
+        "confidence": 0.69,
+        "distance_px": 552.6,
+        "status": "connection_uncertain"
+      },
+      {
+        "source": "V-1063",
+        "target": "Valve Ball_24",
+        "line_type": "instrument_dashed",
+        "confidence": 0.65,
+        "distance_px": 236.3,
+        "status": "connection_uncertain"
+      },
+      {
+        "source": "V-1063",
+        "target": "Control_27",
+        "line_type": "instrument_dashed",
+        "confidence": 0.64,
+        "distance_px": 452.7,
+        "status": "connection_uncertain"
+      },
+      {
+        "source": "V-1063",
+        "target": "Valve_57",
+        "line_type": "instrument_dashed",
+        "confidence": 0.9,
+        "distance_px": 93.5,
+        "status": "connected"
+      },
+      {
+        "source": "CBJ-01",
+        "target": "ZBJ-02",
+        "line_type": "instrument_dashed",
+        "confidence": 0.9,
+        "distance_px": 37.3,
+        "status": "connected"
+      },
+      {
+        "source": "CBJ-01",
+        "target": "Valve Ball_28",
+        "line_type": "instrument_dashed",
+        "confidence": 0.66,
+        "distance_px": 102.0,
+        "status": "connection_uncertain"
+      },
+      {
+        "source": "CBJ-01",
+        "target": "Control_29",
+        "line_type": "instrument_dashed",
+        "confidence": 0.72,
+        "distance_px": 174.4,
+        "status": "connected"
+      },
+      {
+        "source": "CBJ-01",
+        "target": "Triangle_35",
+        "line_type": "instrument_dashed",
+        "confidence": 0.75,
+        "distance_px": 133.7,
+        "status": "connected"
+      },
+      {
+        "source": "PI-1027",
+        "target": "PT-1027",
+        "line_type": "instrument_dashed",
+        "confidence": 0.75,
+        "distance_px": 185.5,
+        "status": "connected"
+      },
+      {
+        "source": "PI-1027",
+        "target": "Valve Angle_33",
+        "line_type": "instrument_dashed",
+        "confidence": 0.73,
+        "distance_px": 108.5,
+        "status": "connected"
+      },
+      {
+        "source": "PI-1027",
+        "target": "Injector Point_47",
+        "line_type": "instrument_dashed",
+        "confidence": 0.72,
+        "distance_px": 582.5,
+        "status": "connected"
+      },
+      {
+        "source": "PT-1027",
+        "target": "Valve Check_21",
+        "line_type": "instrument_dashed",
+        "confidence": 0.68,
+        "distance_px": 470.2,
+        "status": "connection_uncertain"
+      },
+      {
+        "source": "PT-1027",
+        "target": "Valve Angle_33",
+        "line_type": "instrument_dashed",
+        "confidence": 0.77,
+        "distance_px": 77.0,
+        "status": "connected"
+      }
+    ]
+  },
+  "vlm_observations": [
+    {
+      "component_type": "observed_feature",
+      "notes": "The image shows a black and white diagram of a piping system. The diagram includes various components such as a flow ori",
+      "confidence": 0.7,
+      "tile_id": 1,
+      "source": "targeted_vlm"
+    }
+  ],
+  "rag_sources": [
+    {
+      "document": "sop_electrical_isolation_loto.md",
+      "page": 1,
+      "snippet": "every phase-to-phase and phase-to-ground conductor on the isolated equipment to confirm 0.0V.\n   - Re-verify voltmeter on the known energized source to confirm instrument functionality.\n\n## 4. Padlock"
+    },
+    {
+      "document": "sop_pressure_vessel_inspection.md",
+      "page": 1,
+      "snippet": "al ventilation required throughout inspection.\n- Personnel entering vessel must wear multi-gas detectors and full fall arrest harness if height > 1.8 m.\n\n## 3. Ultrasonic Thickness (UT) Grid Scanning "
+    },
+    {
+      "document": "sop_pressure_vessel_inspection.md",
+      "page": 1,
+      "snippet": "# Standard Operating Procedure: In-Service Pressure Vessel Non-Destructive Inspection (SOP-INS-301)\n\n## 1. Scope & Objective\nThis procedure governs in-service and out-of-service non-destructive testin"
+    }
+  ],
+  "final_answer": "**Structured Analysis**\n\n#### 1. VISUAL EVIDENCE\n\nBased on the provided P&ID diagram, the connections and instrument tags between the inlet flow orifice FO-1035 and pressure indicator PI-1027 are as follows:\n\n* The inlet flow orifice FO-1035 is connected to the pressure indicator PI-1027 via a dashed line, indicating an instrument connection.\n* The instrument tag \"PI-1027\" is associated with the pressure indicator.\n* No valves or other equipment are identified between FO-1035 and PI-1027.\n\n#### 2. DOCUMENT EVIDENCE\n\nAccording to the ISA-5.1 symbology and ASME piping principles, the following standards are relevant to this analysis:\n\n* ISA-5.1: Instrumentation Symbols and Identification\n* ASME Boiler & Pressure Vessel Code Section VIII: Rules for Construction of Pressure Vessels\n\nThe local manual SOP_electrical_isolation_loto.md provides guidelines for electrical isolation and lockout/tagout procedures, which are not directly applicable to this analysis.\n\n#### 3. MODEL INFERENCE & TECHNICAL ASSESSMENT\n\nBased on the visual evidence and document evidence, the operational relationship between FO-1035 and PI-1027 can be inferred as follows:\n\n* The inlet flow orifice FO-1035 provides a flow of fluid to the pressure indicator PI-1027.\n* The pressure indicator PI-1027 measures the pressure of the fluid flowing from FO-1035.\n* The connection between FO-1035 and PI-1027 is an instrument connection, indicating a measurement or control function.\n\nLimitations:\n\n* The analysis is based on a single P&ID diagram and may not capture all relevant information or potential variations in the system.\n* The SOP_electrical_isolation_loto.md and SOP_pressure_vessel_inspection.md documents provide general guidelines and are not directly applicable to this analysis.\n* The analysis assumes that the system is operating within normal parameters and does not account for potential faults or malfunctions.",
+  "verification": {
+    "is_valid": true,
+    "total_claims": 1,
+    "supported_claims": 1,
+    "unsupported_claims": 0,
+    "needs_review_claims": 0,
+    "claims": [
+      {
+        "claim": "**Structured Analysis**\n\n#### 1. VISUAL EVIDENCE\n\nBased on the provided P&ID diagram, the connections and instrument tags between the inlet flow orifice FO-1035 and pressure indicator PI-1027 are as follows:\n\n* The inlet flow orifice FO-1035 is connected to the pressure indicator PI-1027 via a dashed line, indicating an instrument connection.\n* The instrument tag \"PI-1027\" is associated with the pressure indicator.\n* No valves or other equipment are identified between FO-1035 and PI-1027.\n\n####",
+        "status": "SUPPORTED_BY_OCR",
+        "source_document": "sop_electrical_isolation_loto.md",
+        "page": 1,
+        "confidence": 0.84,
+        "evidence": "every phase-to-phase and phase-to-ground conductor on the isolated equipment to confirm 0.0V.\n   - Re-verify voltmeter o..."
+      }
+    ],
+    "calculation_valid": null,
+    "notes": [
+      "1/1 claims verified as SUPPORTED."
+    ]
+  },
+  "latencies": {
+    "hybrid_pipeline_seconds": 4.81,
+    "rag_retrieval_seconds": 2.07,
+    "llama_synthesis_seconds": 15.36,
+    "total_seconds": 22.24
+  },
+  "network_calls": {
+    "external_ai_calls": 0,
+    "external_connections": 0,
+    "wan_egress_blocked": 0,
+    "air_gap_compliant": true,
+    "integrity_seal": "SOVEREIGN-SEAL-9E02586B305950F87B00B7BD"
+  },
+  "verdict": "PASS"
+}

@@ -1,4 +1,4 @@
-﻿import os
+import os
 import sys
 import json
 import time
@@ -13,6 +13,7 @@ from backend.models.schemas import LLMGenerateRequest
 from backend.sandbox.executor import SandboxExecutor
 from backend.agents.verifier import verifier
 from backend.tools.excel_tool import create_calculation_xlsx
+from backend.services.network_monitor import network_monitor
 
 RESULTS_DIR = os.path.join(os.getcwd(), "results")
 os.makedirs(RESULTS_DIR, exist_ok=True)
@@ -176,11 +177,24 @@ async def main():
         "overall_status": "PASS" if (exec_res["exit_code"] == 0 and verif_res["is_valid"] and network_blocked) else "FAIL"
     }
 
+    telemetry = network_monitor.get_telemetry()
+    final_payload["network_telemetry"] = {
+        "status": telemetry.status,
+        "external_ai_calls": telemetry.external_ai_calls,
+        "wan_egress_blocked": telemetry.wan_egress_blocked,
+        "air_gap_compliant": telemetry.air_gap_compliant,
+        "integrity_seal": telemetry.integrity_hash
+    }
+
     out_file = os.path.join(RESULTS_DIR, "coding_e2e.json")
     with open(out_file, "w", encoding="utf-8") as f:
         json.dump(final_payload, f, indent=2)
 
-    print(f"\nSaved Coding Workflow Result to {out_file} (Overall Status: {final_payload['overall_status']})")
+    offline_out_file = os.path.join(RESULTS_DIR, "offline_coding_test.json")
+    with open(offline_out_file, "w", encoding="utf-8") as f:
+        json.dump(final_payload, f, indent=2)
+
+    print(f"\nSaved Coding Workflow Result to {out_file} and {offline_out_file} (Overall Status: {final_payload['overall_status']})")
 
 if __name__ == "__main__":
     asyncio.run(main())

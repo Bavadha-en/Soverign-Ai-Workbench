@@ -20,7 +20,7 @@
       "expected_domain_nature": "Specific equipment identifiers like V-101, P-101, or numeric stream tags",
       "correct_or_meaningful": true,
       "confidence": "MODERATE",
-      "latency_sec": 1.84
+      "latency_sec": 2.2
     },
     {
       "question_id": "Q2_PUMP_IDENTIFICATION",
@@ -40,7 +40,7 @@
       "expected_domain_nature": "Two opposing triangles symbol representing an in-line valve",
       "correct_or_meaningful": false,
       "confidence": "MODERATE",
-      "latency_sec": 0.33
+      "latency_sec": 0.34
     },
     {
       "question_id": "Q4_CONNECTIVITY",
@@ -50,7 +50,7 @@
       "expected_domain_nature": "Interconnected process piping lines with junctions/branches",
       "correct_or_meaningful": false,
       "confidence": "MODERATE",
-      "latency_sec": 0.33
+      "latency_sec": 0.35
     },
     {
       "question_id": "Q5_FLOW_DIRECTION",
@@ -60,7 +60,7 @@
       "expected_domain_nature": "Directional arrowheads along piping flowlines",
       "correct_or_meaningful": false,
       "confidence": "MODERATE",
-      "latency_sec": 0.34
+      "latency_sec": 0.32
     }
   ]
 }

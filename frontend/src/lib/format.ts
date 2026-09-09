@@ -64,9 +64,22 @@ export function pluralize(count: number, singular: string, plural?: string): str
   return count === 1 ? singular : plural ?? `${singular}s`;
 }
 
-/** Normalises the several claim-status spellings the backend can emit. */
-export function normalizeClaimStatus(status: string): 'SUPPORTED' | 'NEEDS REVIEW' | 'UNSUPPORTED' {
-  const value = (status || '').toUpperCase().replace(/_/g, ' ').trim();
+/** Normalises the claim-status spellings the backend can emit. */
+export function normalizeClaimStatus(
+  status: string,
+):
+  | 'SUPPORTED'
+  | 'SUPPORTED_BY_IMAGE'
+  | 'SUPPORTED_BY_OCR'
+  | 'SUPPORTED_BY_RAG'
+  | 'MODEL_INFERENCE'
+  | 'NEEDS REVIEW'
+  | 'UNSUPPORTED' {
+  const value = (status || '').toUpperCase().trim();
+  if (value.includes('IMAGE')) return 'SUPPORTED_BY_IMAGE';
+  if (value.includes('OCR')) return 'SUPPORTED_BY_OCR';
+  if (value.includes('RAG')) return 'SUPPORTED_BY_RAG';
+  if (value.includes('INFERENCE')) return 'MODEL_INFERENCE';
   if (value === 'SUPPORTED') return 'SUPPORTED';
   if (value === 'UNSUPPORTED') return 'UNSUPPORTED';
   return 'NEEDS REVIEW';

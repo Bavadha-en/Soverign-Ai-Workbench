@@ -8,9 +8,10 @@ import { Deliverables } from '../components/Deliverables';
 import { VerificationReport } from '../components/VerificationReport';
 import { SourceEvidence } from '../components/SourceEvidence';
 import { ModelRouting } from '../components/ModelRouting';
+import { PidInspectionView } from '../components/PidInspectionView';
 import { useToast } from '../ui/toast';
 import { api } from '../services/api';
-import type { AgentTaskState } from '../types/api';
+import type { AgentTaskState, PidContext } from '../types/api';
 
 const POLL_INTERVAL_MS = 750;
 
@@ -21,7 +22,6 @@ interface WorkbenchProps {
 
 export const Workbench: React.FC<WorkbenchProps> = ({ presetTask, onPresetConsumed }) => {
   const toast = useToast();
-  const [taskText, setTaskText] = useState(presetTask ?? '');
   const [taskState, setTaskState] = useState<AgentTaskState | null>(null);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -38,7 +38,6 @@ export const Workbench: React.FC<WorkbenchProps> = ({ presetTask, onPresetConsum
 
   useEffect(() => {
     if (presetTask) {
-      setTaskText(presetTask);
       onPresetConsumed();
     }
   }, [presetTask, onPresetConsumed]);
@@ -82,7 +81,6 @@ export const Workbench: React.FC<WorkbenchProps> = ({ presetTask, onPresetConsum
     async (task: string, documentIds: string[]) => {
       stopPolling();
       setError(null);
-      setTaskText(task);
       setTaskState(null);
       setRunning(true);
 
@@ -140,6 +138,20 @@ export const Workbench: React.FC<WorkbenchProps> = ({ presetTask, onPresetConsum
     setError(null);
   };
 
+  // The backend names the model it used in the run trace; surface that rather
+  // than guessing the route on the client.
+  const activeModel =
+    (taskState?.execution_trace ?? [])
+      .map((line) => line.match(/using\s+([\w.:\-/]+)/i)?.[1])
+      .filter((name): name is string => Boolean(name))
+      .pop() ?? null;
+
+  const pidContext =
+    (
+      taskState?.completed_steps?.find((s) => s.tool === 'vision' || s.tool === 'pid_analyzer')
+        ?.result as { pid_context?: PidContext } | undefined
+    )?.pid_context ?? (taskState?.intermediate_data?.pid_context as PidContext | undefined);
+
   return (
     <>
       <PageHeader
@@ -169,6 +181,7 @@ export const Workbench: React.FC<WorkbenchProps> = ({ presetTask, onPresetConsum
             activeTaskId={taskState?.task_id ?? null}
             presetTask={presetTask}
           />
+          {pidContext && <PidInspectionView pidContext={pidContext} />}
           <AgentAnswer output={taskState?.final_output ?? null} status={taskState?.status ?? ''} />
           <ExecutionTrace taskState={taskState} running={running} />
         </div>
@@ -177,7 +190,7 @@ export const Workbench: React.FC<WorkbenchProps> = ({ presetTask, onPresetConsum
           <Deliverables files={taskState?.generated_files ?? []} />
           <VerificationReport verification={taskState?.verification_results ?? null} />
           <SourceEvidence sources={taskState?.retrieved_context ?? []} />
-          <ModelRouting task={taskText} />
+          <ModelRouting activeModel={activeModel} />
         </div>
       </div>
     </>

@@ -1,3 +1,4 @@
+import re
 import time
 from typing import Any, Dict, List
 from backend.llm.interface import LLMProvider
@@ -7,7 +8,7 @@ from backend.models.schemas import LLMGenerateRequest, LLMGenerateResponse
 class MockLLMProvider(LLMProvider):
     """
     Mock LLM Provider for offline development, testing, and GPU-free demos.
-    Returns realistic industrial domain responses for each task type.
+    Returns realistic industrial domain responses dynamically tailored to each task type.
     """
 
     def __init__(self, model_name: str = "mock-open-weight-industrial-v1"):
@@ -17,8 +18,18 @@ class MockLLMProvider(LLMProvider):
         start_time = time.time()
         prompt_lower = request.prompt.lower()
 
+        is_calc = (
+            any(kw in prompt_lower for kw in [
+                "calculate", "computation", "pump efficiency", "pressure drop", "thermal stress",
+                "darcy", "reynolds", "pipe friction"
+            ]) or (
+                any(kw in prompt_lower for kw in ["python", "script", "equation", "formula", "write code"])
+                and not any(kw in prompt_lower for kw in ["sop", "clause", "deviation", "compliance", "inspection review", "flag deviation", "standard"])
+            )
+        )
+
         if getattr(request, "images", None):
-            text = self._vision_response(prompt_lower)
+            text = self._vision_response(request.prompt)
         elif any(kw in prompt_lower for kw in ["classify", "categories:", "vision, coding"]):
             text = self._classify_response(prompt_lower)
         elif any(kw in prompt_lower for kw in ["verdict", "fact-verification", "supported"]):
@@ -27,12 +38,12 @@ class MockLLMProvider(LLMProvider):
             text = self._approval_response(prompt_lower)
         elif any(kw in prompt_lower for kw in ["summarize", "summary", "synthesize", "format engineering"]):
             text = self._summary_response(prompt_lower)
-        elif any(kw in prompt_lower for kw in ["calculate", "python", "code", "script", "equation", "pump efficiency", "pressure drop", "thermal stress"]):
+        elif is_calc:
             text = self._coding_response(prompt_lower)
-        elif any(kw in prompt_lower for kw in ["inspection", "report", "analyze", "findings", "corrosion", "defect"]):
-            text = self._inspection_response(prompt_lower)
-        elif any(kw in prompt_lower for kw in ["sop", "procedure", "maintenance", "standard operating"]):
+        elif any(kw in prompt_lower for kw in ["sop", "procedure", "maintenance", "standard operating", "clause", "standard"]):
             text = self._sop_response(prompt_lower)
+        elif any(kw in prompt_lower for kw in ["inspection", "report", "analyze", "findings", "corrosion", "defect", "deviation", "review"]):
+            text = self._inspection_response(prompt_lower)
         else:
             text = self._general_response(prompt_lower)
 
@@ -49,6 +60,17 @@ class MockLLMProvider(LLMProvider):
         )
 
     def _vision_response(self, prompt: str) -> str:
+        prompt_lower = prompt.lower()
+        if any(kw in prompt_lower for kw in ["pid", "p&id", "drawing", "diagram", "schematic", "flowsheet", "symbol", "piping"]):
+            tags = re.findall(r"\b([A-Z]{1,3}-\d{2,5}[A-Z]?)\b", prompt)
+            tag_str = f" including {', '.join(tags[:4])}" if tags else ""
+            return (
+                f"1. P&ID engineering schematic verified with legible instrumentation tags and equipment identifiers{tag_str}.\n"
+                "2. Piping connections and line tracing identify distinct process, utility, and instrument signal lines per ISA-5.1.\n"
+                "3. In-line isolation valves, control elements, and check valves are mapped to their respective piping runs.\n"
+                "4. Equipment boundaries, suction/discharge paths, and nozzle connectivity match design flowsheets.\n"
+                "5. No ungrounded line discontinuities or conflicting tag identifiers detected across the drawing."
+            )
         return (
             "1. Severe localized corrosion detected on the lower quadrant of the flange face, with approximately 40% wall thickness reduction. "
             "Pitting depth estimated at 3.2mm based on surface texture analysis.\n"
@@ -72,6 +94,24 @@ class MockLLMProvider(LLMProvider):
         return '{"verdict": "SUPPORTED", "confidence": 0.89, "evidence": "SOP-M-402 Section 3 confirms wall loss exceeding 30% requires adjacent spool piece replacement per ASME B31.3 standards."}'
 
     def _inspection_response(self, prompt: str) -> str:
+        prompt_lower = prompt.lower()
+        tags = re.findall(r"\b([A-Z]{1,3}-\d{2,5}[A-Z]?)\b", prompt)
+        eq_mention = f" ({', '.join(tags[:3])})" if tags else ""
+
+        if any(kw in prompt_lower for kw in ["sop", "clause", "deviation", "compliance", "standard"]):
+            tag_item = tags[0] if tags else "CV-102"
+            return (
+                f"Based on the technical documentation & SOP deviation review:\n"
+                f"1. Critical Finding: Corroded main control valve {tag_item} showing 32.4% wall thickness loss, "
+                f"exceeding the 30% replacement threshold per SOP-M-402 Section 3.\n"
+                f"2. Critical Finding: Isolation boundary deviation detected per SOP-M-402 Section 2 "
+                f"(Double Block and Bleed required on process line{eq_mention}).\n"
+                f"3. Secondary Finding: Adjacent piping spool shows 31.4% wall loss requiring ASME B31.3 Para 304 evaluation.\n"
+                f"4. Secondary Finding: Gasket reuse prohibited; Class 600 RTJ spiral wound gasket required per SOP-M-402 Section 3.\n"
+                f"Risk Assessment: HIGH (Category A — Immediate Action Required)\n"
+                f"Recommendation: Immediate isolation of {tag_item} loop and scheduled replacement per SOP-M-402.\n"
+                f"Applicable Standards: ASME B31.3, API 570, SOP-M-402, SOP-M-104"
+            )
         return (
             "Based on the inspection report analysis:\n"
             "1. Critical Finding: Corroded main control valve CV-102 showing 32.4% wall thickness loss. "
@@ -252,6 +292,14 @@ class MockLLMProvider(LLMProvider):
         )
 
     def _general_response(self, prompt: str) -> str:
+        prompt_lower = prompt.lower()
+        tag_match = re.search(r"\b([A-Z]{1,3}-\d{2,5}[A-Z]?)\b", prompt)
+        if tag_match and any(w in prompt_lower for w in ["where", "locate", "location", "find", "coordinate", "position"]):
+            tag = tag_match.group(1)
+            return (
+                f"**Equipment Location**: '{tag}' is identified in the engineering documentation and diagram. "
+                f"Its symbol and alphanumeric tag are confirmed on the designated process piping line per ISA-5.1."
+            )
         return (
             "Based on analysis of the local knowledge base and retrieved SOP documentation:\n\n"
             "The query has been processed using the ConfigIQ sovereign reasoning pipeline. "

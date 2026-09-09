@@ -14,8 +14,25 @@ class AgentStatus(str, Enum):
 
 class FactVerificationStatus(str, Enum):
     SUPPORTED = "SUPPORTED"
+    SUPPORTED_BY_IMAGE = "SUPPORTED_BY_IMAGE"
+    SUPPORTED_BY_OCR = "SUPPORTED_BY_OCR"
+    SUPPORTED_BY_TOPOLOGY = "SUPPORTED_BY_TOPOLOGY"
+    SUPPORTED_BY_RAG = "SUPPORTED_BY_RAG"
+    MODEL_INFERENCE = "MODEL_INFERENCE"
     UNSUPPORTED = "UNSUPPORTED"
-    NEEDS_REVIEW = "NEEDS REVIEW"
+    NEEDS_REVIEW = "NEEDS_REVIEW"
+
+    def __eq__(self, other: Any) -> bool:
+        other_val = getattr(other, "value", other)
+        if str(other_val).replace(" ", "_") == "NEEDS_REVIEW" and self.name == "NEEDS_REVIEW":
+            return True
+        supported_variants = {"SUPPORTED_BY_IMAGE", "SUPPORTED_BY_OCR", "SUPPORTED_BY_TOPOLOGY", "SUPPORTED_BY_RAG", "SUPPORTED"}
+        if self.value == "SUPPORTED" and other_val in supported_variants:
+            return True
+        if other_val == "SUPPORTED" and self.value in supported_variants:
+            return True
+        return super().__eq__(other)
+
 
 
 class PlanStep(BaseModel):
