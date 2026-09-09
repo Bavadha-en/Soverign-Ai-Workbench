@@ -1,158 +1,185 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { TaskInput } from '../components/TaskInput';
-import { AgentTrace } from '../components/AgentTrace';
-import { ModelStatus } from '../components/ModelStatus';
-import { DeliverablesPanel } from '../components/DeliverablesPanel';
-import { VerificationPanel } from '../components/VerificationPanel';
-import { SourcesPanel } from '../components/SourcesPanel';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { AlertCircle, RotateCcw } from 'lucide-react';
+import { PageHeader, Notice } from '../ui/primitives';
+import { TaskComposer } from '../components/TaskComposer';
+import { ExecutionTrace } from '../components/ExecutionTrace';
+import { AgentAnswer } from '../components/AgentAnswer';
+import { Deliverables } from '../components/Deliverables';
+import { VerificationReport } from '../components/VerificationReport';
+import { SourceEvidence } from '../components/SourceEvidence';
+import { ModelRouting } from '../components/ModelRouting';
+import { useToast } from '../ui/toast';
 import { api } from '../services/api';
-import { AgentTaskState, AgentRunResponse } from '../types/api';
-import { AlertCircle } from 'lucide-react';
+import type { AgentTaskState } from '../types/api';
+
+const POLL_INTERVAL_MS = 750;
 
 interface WorkbenchProps {
-  initialTask?: string;
+  presetTask?: string;
+  onPresetConsumed: () => void;
 }
 
-export const Workbench: React.FC<WorkbenchProps> = ({ initialTask }) => {
-  const [currentTaskText, setCurrentTaskText] = useState<string>(initialTask || '');
-  const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
+export const Workbench: React.FC<WorkbenchProps> = ({ presetTask, onPresetConsumed }) => {
+  const toast = useToast();
+  const [taskText, setTaskText] = useState(presetTask ?? '');
   const [taskState, setTaskState] = useState<AgentTaskState | null>(null);
-  const [isRunning, setIsRunning] = useState<boolean>(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [running, setRunning] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const pollRef = useRef<number | null>(null);
 
-  const pollIntervalRef = useRef<number | null>(null);
-
-  // Stop polling helper
-  const stopPolling = () => {
-    if (pollIntervalRef.current !== null) {
-      window.clearInterval(pollIntervalRef.current);
-      pollIntervalRef.current = null;
+  const stopPolling = useCallback(() => {
+    if (pollRef.current !== null) {
+      window.clearInterval(pollRef.current);
+      pollRef.current = null;
     }
-  };
-
-  // Cleanup polling timer when unmounting
-  useEffect(() => {
-    return () => {
-      stopPolling();
-    };
   }, []);
 
-  const pollTaskStatus = async (taskId: string) => {
-    try {
-      const state = await api.getAgentTask(taskId);
-      setTaskState(state);
+  useEffect(() => stopPolling, [stopPolling]);
 
-      const statusUpper = (state.status || '').toUpperCase();
-      if (statusUpper === 'COMPLETED' || statusUpper === 'FAILED') {
-        setIsRunning(false);
-        stopPolling();
-      }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error('Task poll error:', msg);
-      // do not abort immediately on minor network jitter, but stop if 404
-      if (msg.includes('404')) {
-        stopPolling();
-        setIsRunning(false);
-      }
+  useEffect(() => {
+    if (presetTask) {
+      setTaskText(presetTask);
+      onPresetConsumed();
     }
-  };
+  }, [presetTask, onPresetConsumed]);
 
-  const handleRunAgent = async (task: string, documentIds: string[]) => {
+  const poll = useCallback(
+    async (taskId: string) => {
+      try {
+        const state = await api.getAgentTask(taskId);
+        setTaskState(state);
+
+        const status = (state.status || '').toUpperCase();
+        if (status === 'COMPLETED' || status === 'FAILED') {
+          stopPolling();
+          setRunning(false);
+          if (status === 'COMPLETED') {
+            const count = state.generated_files?.length ?? 0;
+            toast.success(
+              count > 0
+                ? `Run complete — ${count} deliverable${count === 1 ? '' : 's'} ready`
+                : 'Run complete',
+            );
+          } else {
+            toast.error('Run failed — see the runtime log for detail');
+          }
+        }
+      } catch (pollError) {
+        const message = (pollError as Error).message;
+        // Transient network jitter is expected while the agent is busy; only a
+        // missing task is fatal to the poll loop.
+        if (message.includes('404')) {
+          stopPolling();
+          setRunning(false);
+          setError('The run could not be found on the backend. It may have been restarted.');
+        }
+      }
+    },
+    [stopPolling, toast],
+  );
+
+  const runTask = useCallback(
+    async (task: string, documentIds: string[]) => {
+      stopPolling();
+      setError(null);
+      setTaskText(task);
+      setTaskState(null);
+      setRunning(true);
+
+      try {
+        const response = await api.runAgent({ task, document_ids: documentIds });
+
+        setTaskState({
+          task_id: response.task_id,
+          status: response.status.toUpperCase(),
+          current_step_index: response.steps_completed,
+          plan: response.plan,
+          completed_steps: [],
+          retrieved_context: response.sources ?? [],
+          intermediate_data: {},
+          verification_results: response.verification ?? null,
+          final_output: response.final_output,
+          generated_files: response.generated_files ?? [],
+          execution_trace: response.execution_trace ?? [],
+          retry_count: 0,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          task,
+          document_ids: documentIds,
+        });
+
+        const status = response.status.toUpperCase();
+        if (status === 'COMPLETED' || status === 'FAILED') {
+          setRunning(false);
+          if (status === 'COMPLETED') {
+            const count = response.generated_files?.length ?? 0;
+            toast.success(
+              count > 0
+                ? `Run complete — ${count} deliverable${count === 1 ? '' : 's'} ready`
+                : 'Run complete',
+            );
+          } else {
+            toast.error('Run failed — see the runtime log for detail');
+          }
+        } else {
+          pollRef.current = window.setInterval(() => poll(response.task_id), POLL_INTERVAL_MS);
+        }
+      } catch (runError) {
+        setRunning(false);
+        setError((runError as Error).message);
+        toast.error('Could not start the run');
+      }
+    },
+    [poll, stopPolling, toast],
+  );
+
+  const reset = () => {
     stopPolling();
-    setErrorMessage(null);
-    setCurrentTaskText(task);
-    setIsRunning(true);
-    setActiveTaskId(null);
+    setRunning(false);
     setTaskState(null);
-
-    try {
-      // Step 1: Call actual POST /agent/run
-      const response: AgentRunResponse = await api.runAgent({
-        task,
-        document_ids: documentIds,
-      });
-
-      setActiveTaskId(response.task_id);
-
-      // Initialize preliminary task state from run response
-      const initialPlanState: AgentTaskState = {
-        task_id: response.task_id,
-        status: response.status.toUpperCase(),
-        current_step_index: response.steps_completed,
-        plan: response.plan,
-        completed_steps: [],
-        retrieved_context: response.sources || [],
-        intermediate_data: {},
-        verification_results: response.verification || null,
-        final_output: response.final_output,
-        generated_files: response.generated_files || [],
-        execution_trace: response.execution_trace || [],
-        retry_count: 0,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        task,
-        document_ids: documentIds,
-      };
-      setTaskState(initialPlanState);
-
-      const statusUpper = response.status.toUpperCase();
-      if (statusUpper === 'COMPLETED' || statusUpper === 'FAILED') {
-        setIsRunning(false);
-      } else {
-        // Step 2: Poll GET /agent/{task_id} every 750ms
-        pollIntervalRef.current = window.setInterval(() => {
-          pollTaskStatus(response.task_id);
-        }, 750);
-      }
-    } catch (err: unknown) {
-      setIsRunning(false);
-      const msg = err instanceof Error ? err.message : String(err);
-      setErrorMessage(`Agent execution error: ${msg}`);
-    }
+    setError(null);
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-      {errorMessage && (
-        <div
-          style={{
-            padding: '12px 16px',
-            backgroundColor: 'var(--color-danger-bg)',
-            border: '1px solid var(--color-danger)',
-            borderRadius: '6px',
-            color: '#f87171',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-            fontSize: '13px',
-          }}
-        >
-          <AlertCircle size={16} />
-          <div>{errorMessage}</div>
-        </div>
+    <>
+      <PageHeader
+        title="Workbench"
+        subtitle="Give the agent an engineering objective. It plans the work, runs each tool locally, verifies what it produced, and hands back signed-off documents."
+        actions={
+          taskState && !running ? (
+            <button type="button" className="btn btn-secondary" onClick={reset}>
+              <RotateCcw size={14} />
+              Clear run
+            </button>
+          ) : undefined
+        }
+      />
+
+      {error && (
+        <Notice tone="danger" icon={<AlertCircle size={16} />}>
+          <strong>Run could not start.</strong> {error}
+        </Notice>
       )}
 
-      {/* Main Workbench Grid */}
-      <div className="grid-workbench">
-        {/* Left Column: Input, Execution Graph Trace, Model Routing */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <TaskInput
-            onRunAgent={handleRunAgent}
-            isRunning={isRunning}
-            activeTaskId={activeTaskId}
+      <div className="split-workbench">
+        <div className="stack gap-18">
+          <TaskComposer
+            onRun={runTask}
+            running={running}
+            activeTaskId={taskState?.task_id ?? null}
+            presetTask={presetTask}
           />
-          <AgentTrace taskState={taskState} isRunning={isRunning} />
-          <ModelStatus currentTask={currentTaskText} />
+          <AgentAnswer output={taskState?.final_output ?? null} status={taskState?.status ?? ''} />
+          <ExecutionTrace taskState={taskState} running={running} />
         </div>
 
-        {/* Right Column: Deliverables, Fact & Physics Verifier, SOP Sources */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <DeliverablesPanel files={taskState?.generated_files || []} />
-          <VerificationPanel verification={taskState?.verification_results || null} />
-          <SourcesPanel sources={taskState?.retrieved_context || []} />
+        <div className="stack gap-18">
+          <Deliverables files={taskState?.generated_files ?? []} />
+          <VerificationReport verification={taskState?.verification_results ?? null} />
+          <SourceEvidence sources={taskState?.retrieved_context ?? []} />
+          <ModelRouting task={taskText} />
         </div>
       </div>
-    </div>
+    </>
   );
 };

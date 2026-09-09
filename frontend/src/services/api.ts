@@ -1,205 +1,219 @@
-import {
-  HealthResponse,
-  NetworkStatus,
-  ToolDefinition,
+import type {
   AgentRunRequest,
   AgentRunResponse,
   AgentTaskState,
-  DocumentUploadResponse,
-  DocumentMetadataResponse,
   AuditLogResponse,
-  KnowledgeSearchResponse,
-  KnowledgeIngestResponse,
   ChatConversationRequest,
   ChatConversationResponse,
+  DocumentMetadataResponse,
+  DocumentUploadResponse,
+  HealthResponse,
+  KnowledgeIngestResponse,
+  KnowledgeSearchResponse,
+  NetworkStatus,
+  NetworkTelemetry,
+  SampleDocumentList,
+  SystemStats,
+  ToolDefinition,
 } from '../types/api';
 
 const API_BASE_URL: string =
   (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/+$/, '') ||
   'http://localhost:8000';
 
+/** Long enough for a local model to answer, short enough to surface a hung backend. */
+const DEFAULT_TIMEOUT_MS = 180_000;
+const QUICK_TIMEOUT_MS = 8_000;
+
 class ApiService {
-  private baseUrl: string;
+  constructor(private readonly baseUrl: string) {}
 
-  constructor(baseUrl: string) {
-    this.baseUrl = baseUrl;
-  }
-
-  public getBaseUrl(): string {
+  getBaseUrl(): string {
     return this.baseUrl;
   }
 
-  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const url = `${this.baseUrl}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+  /** Reads the error detail FastAPI returns, falling back to the status line. */
+  private static async readError(response: Response): Promise<string> {
     try {
-      const response = await fetch(url, {
+      const body = await response.json();
+      if (body?.detail) {
+        return typeof body.detail === 'string' ? body.detail : JSON.stringify(body.detail);
+      }
+    } catch {
+      /* body was not JSON */
+    }
+    return `HTTP ${response.status} ${response.statusText}`;
+  }
+
+  private async request<T>(
+    endpoint: string,
+    options: RequestInit = {},
+    timeoutMs: number = DEFAULT_TIMEOUT_MS,
+  ): Promise<T> {
+    const path = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const response = await fetch(`${this.baseUrl}${path}`, {
         ...options,
-        headers: {
-          Accept: 'application/json',
-          ...(options.headers || {}),
-        },
+        signal: controller.signal,
+        headers: { Accept: 'application/json', ...(options.headers ?? {}) },
       });
 
-      if (!response.ok) {
-        let errorDetail = `HTTP ${response.status} ${response.statusText}`;
-        try {
-          const errJson = await response.json();
-          if (errJson && errJson.detail) {
-            errorDetail = typeof errJson.detail === 'string' ? errJson.detail : JSON.stringify(errJson.detail);
-          }
-        } catch {
-          // fallback to status text
-        }
-        throw new Error(errorDetail);
-      }
-
+      if (!response.ok) throw new Error(await ApiService.readError(response));
       return (await response.json()) as T;
-    } catch (err: unknown) {
-      if (err instanceof Error) {
-        throw err;
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        throw new Error(`Request to ${path} timed out after ${Math.round(timeoutMs / 1000)}s`);
       }
-      throw new Error(String(err));
+      throw error instanceof Error ? error : new Error(String(error));
+    } finally {
+      window.clearTimeout(timer);
     }
   }
 
-  // --- Health & Sovereignty ---
-
-  public async getHealth(): Promise<HealthResponse> {
-    return this.request<HealthResponse>('/health');
-  }
-
-  public async getNetworkStatus(): Promise<NetworkStatus> {
-    return this.request<NetworkStatus>('/network/status');
-  }
-
-  public async getNetworkTelemetry(): Promise<import('../types/api').NetworkTelemetry> {
-    return this.request<import('../types/api').NetworkTelemetry>('/network/telemetry');
-  }
-
-
-  // --- Agent & Tools ---
-
-  public async getAgentTools(): Promise<ToolDefinition[]> {
-    return this.request<ToolDefinition[]>('/agent/tools');
-  }
-
-  public async runAgent(request: AgentRunRequest): Promise<AgentRunResponse> {
-    return this.request<AgentRunResponse>('/agent/run', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
+  private postJson<T>(endpoint: string, body: unknown, timeoutMs?: number): Promise<T> {
+    return this.request<T>(
+      endpoint,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
       },
-      body: JSON.stringify(request),
-    });
+      timeoutMs,
+    );
   }
 
-  public async getAgentTask(taskId: string): Promise<AgentTaskState> {
-    return this.request<AgentTaskState>(`/agent/${encodeURIComponent(taskId)}`);
+  /* ---- health and sovereignty ---- */
+
+  getHealth(): Promise<HealthResponse> {
+    return this.request<HealthResponse>('/health', {}, QUICK_TIMEOUT_MS);
   }
 
-  // --- Deliverables & Files ---
-
-  public getOutputFileUrl(filename: string): string {
-    // Return relative or absolute URL to backend secure output endpoint
-    const cleanFilename = filename.replace(/^outputs[/\\]/, '');
-    return `${this.baseUrl}/outputs/${encodeURIComponent(cleanFilename)}`;
+  getNetworkStatus(): Promise<NetworkStatus> {
+    return this.request<NetworkStatus>('/network/status', {}, QUICK_TIMEOUT_MS);
   }
 
-  public async downloadOutputFile(filename: string): Promise<void> {
-    const url = this.getOutputFileUrl(filename);
+  getNetworkTelemetry(): Promise<NetworkTelemetry> {
+    return this.request<NetworkTelemetry>('/network/telemetry', {}, QUICK_TIMEOUT_MS);
+  }
+
+  getSystemStats(): Promise<SystemStats> {
+    return this.request<SystemStats>('/stats', {}, QUICK_TIMEOUT_MS);
+  }
+
+  /* ---- agent ---- */
+
+  getAgentTools(): Promise<ToolDefinition[]> {
+    return this.request<ToolDefinition[]>('/agent/tools', {}, QUICK_TIMEOUT_MS);
+  }
+
+  runAgent(request: AgentRunRequest): Promise<AgentRunResponse> {
+    return this.postJson<AgentRunResponse>('/agent/run', request);
+  }
+
+  getAgentTask(taskId: string): Promise<AgentTaskState> {
+    return this.request<AgentTaskState>(
+      `/agent/${encodeURIComponent(taskId)}`,
+      {},
+      QUICK_TIMEOUT_MS,
+    );
+  }
+
+  /* ---- deliverables ---- */
+
+  /**
+   * The agent reports generated files as absolute host paths. The download
+   * endpoint rejects anything containing a drive letter or a leading slash, so
+   * reduce the path to the part below the outputs directory before building
+   * the URL. Segments are encoded individually so nested folders survive.
+   */
+  private static toOutputPath(filename: string): string {
+    const normalized = filename.replace(/\\/g, '/');
+    const marker = normalized.toLowerCase().lastIndexOf('outputs/');
+    const relative =
+      marker >= 0 ? normalized.slice(marker + 'outputs/'.length) : normalized.split('/').pop() || normalized;
+
+    return relative
+      .replace(/^[a-zA-Z]:/, '')
+      .replace(/^\/+/, '')
+      .split('/')
+      .filter(Boolean)
+      .map(encodeURIComponent)
+      .join('/');
+  }
+
+  getOutputFileUrl(filename: string): string {
+    return `${this.baseUrl}/outputs/${ApiService.toOutputPath(filename)}`;
+  }
+
+  downloadOutputFile(filename: string): void {
     const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', filename.split('/').pop() || filename);
-    link.target = '_blank';
+    link.href = this.getOutputFileUrl(filename);
+    link.download = filename.split(/[/\\]/).pop() || filename;
+    link.rel = 'noopener';
     document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
+    link.remove();
   }
 
-  // --- Documents & Upload ---
+  /* ---- documents ---- */
 
-  public async uploadDocument(file: File): Promise<DocumentUploadResponse> {
+  async uploadDocument(file: File): Promise<DocumentUploadResponse> {
     const formData = new FormData();
     formData.append('file', file);
 
-    const url = `${this.baseUrl}/documents/upload`;
-    const response = await fetch(url, {
+    const response = await fetch(`${this.baseUrl}/documents/upload`, {
       method: 'POST',
       body: formData,
     });
 
-    if (!response.ok) {
-      let errorDetail = `Upload failed with status ${response.status}`;
-      try {
-        const errJson = await response.json();
-        if (errJson && errJson.detail) {
-          errorDetail = typeof errJson.detail === 'string' ? errJson.detail : JSON.stringify(errJson.detail);
-        }
-      } catch {
-        // ignore json parse error
-      }
-      throw new Error(errorDetail);
-    }
-
+    if (!response.ok) throw new Error(await ApiService.readError(response));
     return (await response.json()) as DocumentUploadResponse;
   }
 
-  public async getDocument(documentId: string): Promise<DocumentMetadataResponse> {
+  getDocument(documentId: string): Promise<DocumentMetadataResponse> {
     return this.request<DocumentMetadataResponse>(`/documents/${encodeURIComponent(documentId)}`);
   }
 
-  public async listSampleDocuments(): Promise<{ samples: Array<{ filename: string; title: string; category: string; description: string; file_size: number; url: string }> }> {
-    return this.request<{ samples: Array<{ filename: string; title: string; category: string; description: string; file_size: number; url: string }> }>('/documents/samples/list');
+  listSampleDocuments(): Promise<SampleDocumentList> {
+    return this.request<SampleDocumentList>('/documents/samples/list', {}, QUICK_TIMEOUT_MS);
   }
 
-  public async loadSampleDocument(filename: string): Promise<DocumentUploadResponse> {
-    return this.request<DocumentUploadResponse>(`/documents/samples/load/${encodeURIComponent(filename)}`, {
-      method: 'POST',
+  loadSampleDocument(filename: string): Promise<DocumentUploadResponse> {
+    return this.request<DocumentUploadResponse>(
+      `/documents/samples/load/${encodeURIComponent(filename)}`,
+      { method: 'POST' },
+    );
+  }
+
+  /* ---- knowledge base ---- */
+
+  searchKnowledge(query: string, topK = 5): Promise<KnowledgeSearchResponse> {
+    return this.postJson<KnowledgeSearchResponse>('/knowledge/search', { query, top_k: topK });
+  }
+
+  ingestKnowledge(directoryPath = 'knowledge_base', forceReindex = false): Promise<KnowledgeIngestResponse> {
+    return this.postJson<KnowledgeIngestResponse>('/knowledge/ingest', {
+      directory_path: directoryPath,
+      force_reindex: forceReindex,
     });
   }
 
-  // --- Knowledge Base ---
+  /* ---- chat ---- */
 
-  public async searchKnowledge(query: string, topK: number = 5): Promise<KnowledgeSearchResponse> {
-    return this.request<KnowledgeSearchResponse>('/knowledge/search', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ query, top_k: topK }),
-    });
+  chatConversation(request: ChatConversationRequest): Promise<ChatConversationResponse> {
+    return this.postJson<ChatConversationResponse>('/chat/conversation', request);
   }
 
-  public async ingestKnowledge(directoryPath: string = 'knowledge_base', forceReindex: boolean = false): Promise<KnowledgeIngestResponse> {
-    return this.request<KnowledgeIngestResponse>('/knowledge/ingest', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ directory_path: directoryPath, force_reindex: forceReindex }),
-    });
-  }
+  /* ---- audit ---- */
 
-  // --- Conversational Chat ---
-
-  public async chatConversation(request: ChatConversationRequest): Promise<ChatConversationResponse> {
-    return this.request<ChatConversationResponse>('/chat/conversation', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(request),
-    });
-  }
-
-  // --- Audit Logs ---
-
-  public async getAuditLogs(taskId?: string, limit: number = 100): Promise<AuditLogResponse> {
+  getAuditLogs(taskId?: string, limit = 100): Promise<AuditLogResponse> {
     const params = new URLSearchParams();
-    if (taskId) params.append('task_id', taskId);
-    if (limit) params.append('limit', limit.toString());
-    const queryStr = params.toString() ? `?${params.toString()}` : '';
-    return this.request<AuditLogResponse>(`/logs${queryStr}`);
+    if (taskId) params.set('task_id', taskId);
+    params.set('limit', String(limit));
+    return this.request<AuditLogResponse>(`/logs?${params.toString()}`, {}, QUICK_TIMEOUT_MS);
   }
 }
 

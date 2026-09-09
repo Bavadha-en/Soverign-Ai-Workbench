@@ -70,6 +70,33 @@ export interface ToolDefinition {
 
 export type ToolInfo = ToolDefinition;
 
+/** Aggregate counters rendered on the overview page (GET /stats). */
+export interface SystemStats {
+  tasks_completed: number;
+  total_actions: number;
+  external_attempts: number;
+  kb_documents: number;
+  chunks_indexed: number;
+  deliverables_generated: number;
+  ollama_available: boolean;
+  models_loaded: number;
+  uptime_status: string;
+}
+
+/** A bundled inspection asset that can be attached without a file dialog. */
+export interface SampleDocument {
+  filename: string;
+  title: string;
+  category: string;
+  description: string;
+  file_size: number;
+  url: string;
+}
+
+export interface SampleDocumentList {
+  samples: SampleDocument[];
+}
+
 export interface PlanStep {
   step: number;
   action: string;

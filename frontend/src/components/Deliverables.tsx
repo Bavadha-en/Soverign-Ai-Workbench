@@ -1,0 +1,135 @@
+import React from 'react';
+import { Download, FileSpreadsheet, FileText, MonitorPlay, Package } from 'lucide-react';
+import { Card, CardBody, CardHead, EmptyState } from '../ui/primitives';
+import { useToast } from '../ui/toast';
+import { api } from '../services/api';
+import { baseName, fileExtension } from '../lib/format';
+
+interface DeliverableMeta {
+  label: string;
+  description: string;
+  icon: React.ReactNode;
+  tone: string;
+  fg: string;
+  bg: string;
+}
+
+function describe(filename: string): DeliverableMeta {
+  switch (fileExtension(filename)) {
+    case 'docx':
+      return {
+        label: 'Approval note',
+        description: 'Formal engineering memo with findings, risk rating and SOP citations',
+        icon: <FileText size={18} />,
+        tone: 'DOCX',
+        fg: 'var(--brand-600)',
+        bg: 'var(--brand-50)',
+      };
+    case 'xlsx':
+      return {
+        label: 'Calculation workbook',
+        description: 'Inputs, working, verification and sources across four sheets',
+        icon: <FileSpreadsheet size={18} />,
+        tone: 'XLSX',
+        fg: 'var(--success-600)',
+        bg: 'var(--success-50)',
+      };
+    case 'pptx':
+      return {
+        label: 'Executive briefing',
+        description: 'Widescreen deck for plant leadership sign-off',
+        icon: <MonitorPlay size={18} />,
+        tone: 'PPTX',
+        fg: 'var(--warning-600)',
+        bg: 'var(--warning-50)',
+      };
+    default:
+      return {
+        label: 'Generated file',
+        description: 'Exported artefact from this run',
+        icon: <Package size={18} />,
+        tone: fileExtension(filename).toUpperCase() || 'FILE',
+        fg: 'var(--violet-600)',
+        bg: 'var(--violet-50)',
+      };
+  }
+}
+
+export const Deliverables: React.FC<{ files: string[] }> = ({ files }) => {
+  const toast = useToast();
+
+  const download = (file: string) => {
+    api.downloadOutputFile(file);
+    toast.info(`Downloading ${baseName(file)}`);
+  };
+
+  return (
+    <Card>
+      <CardHead
+        icon={<Package size={16} />}
+        title="Deliverables"
+        subtitle={files.length ? `${files.length} generated this run` : undefined}
+        actions={
+          files.length > 0 ? (
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => files.forEach(download)}
+            >
+              <Download size={13} />
+              Download all
+            </button>
+          ) : undefined
+        }
+      />
+
+      <CardBody>
+        {files.length === 0 ? (
+          <EmptyState
+            icon={<Package size={20} />}
+            title="Nothing generated yet"
+            text="Word, Excel and PowerPoint documents produced by a run appear here, ready to download."
+          />
+        ) : (
+          <div className="stack gap-10">
+            {files.map((file) => {
+              const meta = describe(file);
+              return (
+                <div key={file} className="panel panel-plain row gap-12">
+                  <span
+                    className="stat-icon"
+                    style={{ width: 38, height: 38, background: meta.bg, color: meta.fg }}
+                  >
+                    {meta.icon}
+                  </span>
+
+                  <div className="grow">
+                    <div className="row gap-8">
+                      <span className="text-base strong" style={{ fontWeight: 600 }}>
+                        {meta.label}
+                      </span>
+                      <span className="badge badge-neutral badge-square">{meta.tone}</span>
+                    </div>
+                    <p className="text-sm muted">{meta.description}</p>
+                    <p className="text-xs mono faint truncate" title={file}>
+                      {baseName(file)}
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm shrink-0"
+                    onClick={() => download(file)}
+                  >
+                    <Download size={13} />
+                    Download
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </CardBody>
+    </Card>
+  );
+};
