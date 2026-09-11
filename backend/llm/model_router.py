@@ -51,31 +51,8 @@ class ModelRouter:
     def route(self, prompt: str, image_present: bool = False) -> Dict[str, Any]:
         """
         Classify task and select the appropriate local open-weight model.
-        Tries LLM classification first, then falls back to keyword matching.
+        Executes fast deterministic keyword matching first (<1ms) to eliminate latency.
         """
-        llm_category = None
-        try:
-            import asyncio
-            try:
-                loop = asyncio.get_running_loop()
-            except RuntimeError:
-                loop = None
-
-            if loop and loop.is_running():
-                import concurrent.futures
-                with concurrent.futures.ThreadPoolExecutor() as pool:
-                    llm_category = pool.submit(
-                        asyncio.run,
-                        self._classify_with_llm(prompt, image_present),
-                    ).result(timeout=15)
-            else:
-                llm_category = asyncio.run(self._classify_with_llm(prompt, image_present))
-        except Exception:
-            pass
-
-        if llm_category:
-            return self._resolve_model(llm_category, llm_routed=True)
-
         return self._keyword_route(prompt, image_present)
 
     def _resolve_model(self, task_type: str, llm_routed: bool = False) -> Dict[str, Any]:

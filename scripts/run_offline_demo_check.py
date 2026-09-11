@@ -77,14 +77,14 @@ def check_all():
     # 4. P&ID Pipeline & Assets
     pid_ok = False
     try:
-        pid_img = os.path.join(os.getcwd(), "demo_data", "pid", "pid.png")
+        pid_img = os.path.join(os.getcwd(), "demo_data", "pid", "pid_system_b.png")
         if os.path.exists(pid_img):
             import cv2
             img = cv2.imread(pid_img)
             if img is not None:
                 pid_ok = True
             else:
-                details["P&ID Pipeline"] = "Failed to decode demo_data/pid/pid.png"
+                details["P&ID Pipeline"] = "Failed to decode demo_data/pid/pid_system_b.png"
         else:
             details["P&ID Pipeline"] = f"P&ID image missing at {pid_img}"
     except Exception as e:

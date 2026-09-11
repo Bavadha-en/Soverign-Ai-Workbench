@@ -327,9 +327,9 @@ class ToolRegistry:
                             "pid_context": pid_context
                         }
 
-            # Fallback when no image file is present: parse document text or prompt dynamically
-            combined_input = (document_text or "") + "\n" + (prompt or "")
-            if combined_input.strip():
+            # Fallback when no image file is present: parse document text or inspection prompt dynamically
+            combined_input = f"{document_text or ''}\n{prompt or ''}".strip()
+            if combined_input:
                 for line in combined_input.split("\n"):
                     l = line.strip("- *\t")
                     if len(l) < 12 or l.startswith("===") or l.startswith("###"):

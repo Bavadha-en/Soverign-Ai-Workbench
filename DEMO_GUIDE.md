@@ -90,7 +90,7 @@ Demonstrate multimodal interpretation of complex Process & Instrumentation Diagr
 
 ### Step-by-Step Instructions:
 1. Navigate to **P&ID Diagrams** in Workbench.
-2. Load Engineering Diagram: Select `demo_data/pid/pid.png` (2104x1132 authentic process diagram).
+2. Load Engineering Diagram: Select `demo_data/pid/pid_system_b.png` (self-made 1600x1000 process diagram).
 3. Submit P&ID Query:
    `"Identify the isolation valves surrounding the primary pump suction line and describe the safety interlock procedure according to API 598 and ASME standards."`
 4. Observe Tripartite Structured Output:
@@ -129,7 +129,7 @@ Provide technical evidence that the workbench operates under 100% sovereign air-
    - **Status:** `LOCAL_ONLY` / `AIR-GAP VERIFIED`
    - **External AI Calls:** `0`
    - **External Application Sockets:** `0`
-   - **Local Bindings:** `127.0.0.1:11434` (Ollama), `0.0.0.0:8000` (FastAPI), `0.0.0.0:8000` also serves the console
+   - **Local Bindings:** `127.0.0.1:11434` (Ollama), `127.0.0.1:8000` (FastAPI, also serves the console)
    - **Sovereign Seal Hash:** Cryptographic SHA-256 hash (`SOVEREIGN-SEAL-...`)
 3. View Audit Report: HTML download at `http://localhost:8000/audit/report`.
 

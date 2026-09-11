@@ -71,6 +71,7 @@ class OllamaEmbedder(BaseEmbedder):
         self.base_url = (base_url or settings.OLLAMA_BASE_URL).rstrip("/")
         self.model_name = model_name or settings.EMBEDDING_MODEL
         self.fallback = LocalFallbackEmbedder()
+        self._query_cache: dict[str, List[float]] = {}
 
         if not is_local_url(self.base_url):
             raise ValueError(f"Network sovereignty violation: Non-local embedding URL {self.base_url}")
@@ -82,10 +83,14 @@ class OllamaEmbedder(BaseEmbedder):
 
         try:
             with httpx.Client(timeout=30.0) as client:
-                # 1. Try modern Ollama /api/embed batch API
+                # 1. Try modern Ollama /api/embed batch API with keep_alive
                 resp = client.post(
                     f"{self.base_url}/api/embed",
-                    json={"model": self.model_name, "input": texts}
+                    json={
+                        "model": self.model_name,
+                        "input": texts,
+                        "keep_alive": "60m"
+                    }
                 )
                 if resp.status_code == 200:
                     data = resp.json()
@@ -98,7 +103,11 @@ class OllamaEmbedder(BaseEmbedder):
                 for text in texts:
                     r = client.post(
                         f"{self.base_url}/api/embeddings",
-                        json={"model": self.model_name, "prompt": text}
+                        json={
+                            "model": self.model_name,
+                            "prompt": text,
+                            "keep_alive": "60m"
+                        }
                     )
                     if r.status_code == 200 and "embedding" in r.json():
                         results.append(r.json()["embedding"])
@@ -110,10 +119,29 @@ class OllamaEmbedder(BaseEmbedder):
             return self.fallback.embed_texts(texts)
 
     def embed_query(self, query: str) -> List[float]:
+        if not query:
+            return self.fallback.embed_query("")
+
+        clean_query = query.strip()
+        if clean_query in self._query_cache:
+            return self._query_cache[clean_query]
+
         results = self.embed_texts([query])
-        return results[0] if results else self.fallback.embed_query(query)
+        vector = results[0] if results else self.fallback.embed_query(query)
+
+        if len(self._query_cache) >= 1024:
+            self._query_cache.pop(next(iter(self._query_cache)))
+        self._query_cache[clean_query] = vector
+
+        return vector
+
+
+_embedder_cache = {}
 
 
 def get_embedder(model_name: Optional[str] = None) -> BaseEmbedder:
-    """Retrieve configured embedder instance."""
-    return OllamaEmbedder(model_name=model_name)
+    """Retrieve configured embedder instance (cached singleton)."""
+    key = model_name or settings.EMBEDDING_MODEL
+    if key not in _embedder_cache:
+        _embedder_cache[key] = OllamaEmbedder(model_name=model_name)
+    return _embedder_cache[key]

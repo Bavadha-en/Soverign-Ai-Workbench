@@ -54,7 +54,7 @@ class Settings:
     """ConfigIQ On-Premise System Configuration."""
 
     # Server
-    HOST: str = os.getenv("HOST", "0.0.0.0")
+    HOST: str = os.getenv("HOST", "127.0.0.1")
     PORT: int = int(os.getenv("PORT", "8000"))
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "on-premise / air-gapped")
     DEBUG: bool = os.getenv("DEBUG", "True").lower() in ("true", "1", "yes")
@@ -67,7 +67,7 @@ class Settings:
     # Model Registry Settings (Customizable via environment variables)
     GENERAL_MODEL: str = os.getenv("GENERAL_MODEL", "llama3:latest")
     CODING_MODEL: str = os.getenv("CODING_MODEL", "qwen2.5-coder:7b")
-    CODING_HEAVY_MODEL: str = os.getenv("CODING_HEAVY_MODEL", "qwen2.5-coder:14b")
+    CODING_HEAVY_MODEL: str = os.getenv("CODING_HEAVY_MODEL", "qwen2.5-coder:7b")
     EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "nomic-embed-text")
     VISION_MODEL: str = os.getenv("VISION_MODEL", "moondream")
 

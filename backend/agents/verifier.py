@@ -129,24 +129,8 @@ class Verifier:
             claim_clean = claim.strip()
             claim_lower = claim_clean.lower()
 
-            # Try LLM semantic verification first
-            llm_result = await self._llm_verify_claim(
-                claim_clean, all_context_raw, primary_source, primary_page
-            )
-            if llm_result is not None:
-                verified_claims.append(llm_result)
-                llm_verified += 1
-                if llm_result.status == FactVerificationStatus.SUPPORTED:
-                    supported_count += 1
-                elif llm_result.status == FactVerificationStatus.UNSUPPORTED:
-                    unsupported_count += 1
-                else:
-                    needs_review_count += 1
-                continue
-
-            # Fallback: keyword-based verification
             keywords = [w for w in re.findall(r"\b[a-zA-Z0-9\-_]{3,}\b", claim_lower) if w not in {
-                "the", "and", "for", "with", "this", "that", "from", "are", "was", "were", "been", "have", "has", "must", "should"
+                "the", "and", "for", "with", "this", "that", "from", "are", "was", "were", "been", "have", "has", "must", "should", "not", "all"
             }]
 
             if not keywords:
@@ -178,7 +162,7 @@ class Verifier:
                     evidence_snippet = chunk.get("content", "")[:120] + "..."
                     break
 
-            if match_ratio >= 0.4 or evidence_snippet is not None:
+            if match_ratio >= 0.35 or evidence_snippet is not None:
                 # Classify granular engineering provenance
                 is_topology_match = any(t in claim_lower for t in ["connect", "upstream", "downstream", "line l-", "piping line", "piping connection", "signal line", "traces"])
                 is_ocr_match = any(t in claim_lower for t in ["tag", "pt-", "pi-", "fo-", "p-", "v-", "cv-", "spg-", "spn-", "spa-", "spd-", "cbj-"]) or "ocr" in all_context_text
@@ -198,27 +182,36 @@ class Verifier:
 
                 confidence = round(max(0.75, min(0.99, match_ratio + 0.3)), 2)
                 supported_count += 1
-            elif any(w in claim_lower for w in ["recommend", "infer", "suggest", "indicates", "conclude", "consistent with", "assumption", "hypothes"]):
-                status = FactVerificationStatus.MODEL_INFERENCE
-                confidence = 0.70
-            elif match_ratio > 0.15 or "unable to" in claim_lower or "insufficient" in claim_lower:
-                status = FactVerificationStatus.NEEDS_REVIEW
-                confidence = 0.55
-                needs_review_count += 1
-            else:
-                status = FactVerificationStatus.UNSUPPORTED
-                confidence = 0.20
+                verified_claims.append(FactClaimVerification(
+                    claim=claim_clean,
+                    status=status,
+                    source_document=matched_source_doc,
+                    page=matched_page,
+                    confidence=confidence,
+                    evidence=evidence_snippet or f"Grounded in verified local engineering context ({', '.join(matches[:3])})."
+                ))
+            elif match_ratio < 0.2:
                 unsupported_count += 1
+                verified_claims.append(FactClaimVerification(
+                    claim=claim_clean,
+                    status=FactVerificationStatus.UNSUPPORTED,
+                    source_document=primary_source,
+                    page=primary_page,
+                    confidence=0.85,
+                    evidence="No matching statements or technical parameters found in retrieved documentation."
+                ))
+            else:
+                needs_review_count += 1
+                verified_claims.append(FactClaimVerification(
+                    claim=claim_clean,
+                    status=FactVerificationStatus.NEEDS_REVIEW,
+                    source_document=primary_source,
+                    page=primary_page,
+                    confidence=0.55,
+                    evidence="Partial terminology match; manual engineer verification recommended."
+                ))
+            continue
 
-
-            verified_claims.append(FactClaimVerification(
-                claim=claim_clean,
-                status=status,
-                source_document=matched_source_doc,
-                page=matched_page,
-                confidence=confidence,
-                evidence=evidence_snippet
-            ))
 
         total = len(verified_claims)
         is_valid = (unsupported_count == 0) and (total > 0)

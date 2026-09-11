@@ -51,13 +51,17 @@ class OllamaLLMProvider(LLMProvider):
         start_time = time.time()
         model_name = getattr(request, "model", None) or self.default_model
 
+        num_predict = min(request.max_tokens, 600) if request.max_tokens else 512
         payload: Dict[str, Any] = {
             "model": model_name,
             "prompt": request.prompt,
             "stream": False,
+            "keep_alive": "60m",
             "options": {
                 "temperature": request.temperature,
-                "num_predict": request.max_tokens,
+                "num_predict": num_predict,
+                "num_ctx": 2048,
+                "num_thread": 8,
             }
         }
         if request.system_prompt:
@@ -135,6 +139,100 @@ class OllamaLLMProvider(LLMProvider):
                 is_external=False
             )
             raise RuntimeError(f"Ollama local generation failed for model '{model_name}': {str(exc)}") from exc
+
+    async def chat(
+        self,
+        messages: list,
+        model: Optional[str] = None,
+        temperature: float = 0.5,
+        max_tokens: int = 2048,
+        **kwargs
+    ) -> LLMGenerateResponse:
+        """Multi-turn or conversational chat using Ollama's native /api/chat endpoint."""
+        start_time = time.time()
+        model_name = model or self.default_model
+
+        num_predict = min(max_tokens, 600) if max_tokens else 512
+        payload: Dict[str, Any] = {
+            "model": model_name,
+            "messages": messages,
+            "stream": False,
+            "keep_alive": "60m",
+            "options": {
+                "temperature": temperature,
+                "num_predict": num_predict,
+                "num_ctx": 2048,
+                "num_thread": 8,
+            }
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=180.0) as client:
+                response = await client.post(f"{self.base_url}/api/chat", json=payload)
+                response.raise_for_status()
+                data = response.json()
+
+            duration_ms = round((time.time() - start_time) * 1000, 2)
+            msg_obj = data.get("message", {})
+            generated_text = msg_obj.get("content", "")
+
+            prompt_eval_count = data.get("prompt_eval_count", sum(len(str(m.get("content", "")).split()) for m in messages))
+            eval_count = data.get("eval_count", len(generated_text.split()))
+            usage = {
+                "prompt_tokens": prompt_eval_count,
+                "completion_tokens": eval_count,
+                "total_tokens": prompt_eval_count + eval_count
+            }
+
+            network_monitor.record_connection(
+                source="127.0.0.1:8000",
+                destination=f"{self.base_url}/api/chat",
+                process=f"ollama_{model_name}",
+                protocol="HTTP/REST",
+                status="ALLOWED_LOCAL",
+                is_external=False,
+                bytes_transferred=sum(len(str(m.get("content", ""))) for m in messages) + len(generated_text)
+            )
+
+            audit_service.log_action(
+                action="LLM_CHAT",
+                component="llm.ollama_provider",
+                status="SUCCESS",
+                duration_ms=duration_ms,
+                details={
+                    "provider": "ollama",
+                    "model": model_name,
+                    "message_count": len(messages),
+                    "network_scope": "LOCALHOST",
+                    "external_call": False,
+                    "tokens": usage
+                },
+                is_external=False
+            )
+
+            return LLMGenerateResponse(
+                text=generated_text,
+                model=model_name,
+                usage=usage,
+                duration_ms=duration_ms
+            )
+        except Exception as exc:
+            duration_ms = round((time.time() - start_time) * 1000, 2)
+            audit_service.log_action(
+                action="LLM_CHAT",
+                component="llm.ollama_provider",
+                status="FAILED",
+                duration_ms=duration_ms,
+                details={
+                    "provider": "ollama",
+                    "model": model_name,
+                    "error": str(exc),
+                    "network_scope": "LOCALHOST",
+                    "external_call": False
+                },
+                is_external=False
+            )
+            raise RuntimeError(f"Ollama local chat failed for model '{model_name}': {str(exc)}") from exc
 
     async def generate_structured(self, prompt: str, schema: Dict[str, Any], model: Optional[str] = None) -> Dict[str, Any]:
         """Generate structured JSON output adhering to a specified JSON schema."""
