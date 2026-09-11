@@ -7,6 +7,7 @@ from backend.agents.schemas import ToolDefinition
 from backend.documents.pdf_processor import pdf_processor
 from backend.documents.image_processor import image_processor
 from backend.documents.ocr import ocr_engine
+from backend.documents.reader import read_document
 from backend.rag.retriever import retriever
 from backend.sandbox.executor import sandbox_executor
 from backend.config import settings
@@ -110,19 +111,21 @@ class ToolRegistry:
             ext = os.path.splitext(target_path)[1].lower()
             if ext == ".pdf":
                 try:
-                    pdf_res = pdf_processor.process_pdf(target_path)
-                    first_img = pdf_res["images"][0]["file_path"] if pdf_res.get("images") else None
+                    # Scanned PDFs have no text layer; read_document OCRs their page images.
+                    doc = read_document(target_path)
                     return {
                         "status": "success",
                         "document_id": document_id,
                         "file_path": target_path,
-                        "image_path": first_img,
-                        "images": pdf_res.get("images", []),
+                        "image_path": doc["images"][0]["file_path"] if doc.get("images") else None,
+                        "images": doc.get("images", []),
                         "format": "pdf",
-                        "pages": pdf_res["pages"],
-                        "text": "\n\n".join(p["text"] for p in pdf_res["pages_data"] if p["text"]),
-                        "pages_data": pdf_res["pages_data"],
-                        "is_scanned": pdf_res["is_scanned"]
+                        "pages": doc["pages"],
+                        "text": doc["text"],
+                        "pages_data": doc["pages_data"],
+                        "is_scanned": doc["is_scanned"],
+                        "text_source": doc["text_source"],
+                        "lines": doc["lines"],
                     }
                 except Exception:
                     with open(target_path, "r", encoding="utf-8", errors="ignore") as f:
@@ -139,16 +142,20 @@ class ToolRegistry:
                     }
             elif ext in image_processor.SUPPORTED_FORMATS:
                 img_info = image_processor.process_image(target_path)
-                ocr_text = ocr_engine.perform_ocr(target_path)
+                doc = read_document(target_path)
                 return {
                     "status": "success",
                     "document_id": document_id,
                     "file_path": target_path,
                     "image_path": target_path,
-                    "images": [{"page": 1, "file_path": target_path}],
+                    "images": doc["images"],
                     "format": "image",
                     "pages": 1,
-                    "text": ocr_text,
+                    "text": doc["text"],
+                    "pages_data": doc["pages_data"],
+                    "is_scanned": True,
+                    "text_source": doc["text_source"],
+                    "lines": doc["lines"],
                     "image_info": img_info
                 }
             else:
@@ -204,6 +211,7 @@ class ToolRegistry:
             image_source: Optional[str] = None,
             document_text: Optional[str] = None,
             prompt: Optional[str] = None,
+            use_vlm: bool = True,
             **kwargs
         ) -> Dict[str, Any]:
             target_prompt = prompt or "Analyze this industrial inspection image or diagram. Identify any components, symbols, defects, corrosion, cracks, leaks, wear, or anomalies. List each observation as a separate finding with severity and location."
@@ -216,7 +224,7 @@ class ToolRegistry:
 
             # Check if image source exists or if an image file was provided
             actual_image_path = None
-            if image_source and os.path.exists(image_source):
+            if use_vlm and image_source and os.path.exists(image_source):
                 ext = os.path.splitext(image_source)[1].lower()
                 if ext in image_processor.SUPPORTED_FORMATS:
                     actual_image_path = image_source
@@ -469,6 +477,9 @@ class ToolRegistry:
             verification_status: Optional[str] = "SUPPORTED",
             human_review_required: Optional[bool] = None,
             output_path: Optional[str] = None,
+            measurement_checks: Optional[List[Dict[str, Any]]] = None,
+            review_items: Optional[List[str]] = None,
+            severity_basis: Optional[str] = None,
             **kwargs
         ) -> Dict[str, Any]:
             target_path = output_path or os.path.join(os.getcwd(), "outputs", f"Approval_Note_{task_id}.docx")
@@ -486,6 +497,9 @@ class ToolRegistry:
                 model_used=model_used,
                 verification_status=verification_status,
                 human_review_required=human_review_required,
+                measurement_checks=measurement_checks,
+                review_items=review_items,
+                severity_basis=severity_basis,
                 is_synthetic_demo=True
             )
             return {
@@ -510,13 +524,14 @@ class ToolRegistry:
             claims: Optional[List[str]] = None,
             context: Optional[List[Dict[str, Any]]] = None,
             code_result: Optional[Dict[str, Any]] = None,
+            document_text: Optional[str] = None,
             **kwargs
         ) -> Dict[str, Any]:
             # This is wrapped via verifier.py
             from backend.agents.verifier import verifier
             if task_type == "calculation" or code_result is not None:
                 return verifier.verify_calculation(code_result or {})
-            return verifier.verify_facts(claims or [], context or []).model_dump()
+            return verifier.verify_facts(claims or [], context or [], document_text=document_text).model_dump()
 
         self.register(Tool(
             name="verification",
@@ -714,6 +729,25 @@ class ToolRegistry:
             func=_eng_excel_generator,
             input_schema={"task_id": "string"},
             output_schema={"status": "string", "output_path": "string", "filename": "string", "sheets_count": "integer"}
+        ))
+
+        # 15. inspection_checker tool (deterministic readings and SOP limit checks)
+        def _inspection_checker(
+            document_text: str = "",
+            lines: Optional[List[Dict[str, Any]]] = None,
+            text_source: str = "text_layer",
+            pages_data: Optional[List[Dict[str, Any]]] = None,
+            **kwargs
+        ) -> Dict[str, Any]:
+            from backend.documents.inspection_checks import assess_text
+            return assess_text(document_text or "", lines=lines, text_source=text_source, pages_data=pages_data)
+
+        self.register(Tool(
+            name="inspection_checker",
+            description="Reads each measured value from an inspection report and checks it against the limits in the cited SOP. Deterministic; no language model.",
+            func=_inspection_checker,
+            input_schema={"document_text": "string", "lines": "list", "text_source": "string"},
+            output_schema={"measurements": "list", "severity": "object", "review_items": "list", "summary": "string"}
         ))
 
 

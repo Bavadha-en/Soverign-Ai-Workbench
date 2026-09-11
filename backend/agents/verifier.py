@@ -4,6 +4,19 @@ from typing import Any, Dict, List, Optional
 
 from backend.agents.schemas import FactClaimVerification, FactVerificationStatus, VerificationSummary
 
+_VALUE_UNIT_RE = re.compile(
+    r"(?<![\w.])(\d+(?:\.\d+)?)\s*"
+    r"(mm/s|deg\s*C|degC|°\s*C|drops\s*/\s*min(?:ute)?|MPa|kPa|bar|m3\s*/\s*h|m³\s*/\s*h|kW|rpm|mm(?![/\w]))",
+    re.IGNORECASE,
+)
+
+
+def _values_with_units(text: str) -> set:
+    """Every "number unit" pair in the text, with units spelled one way."""
+    from backend.documents.inspection_extractor import canonical_unit
+
+    return {(round(float(v), 3), canonical_unit(u)) for v, u in _VALUE_UNIT_RE.findall(text or "")}
+
 
 class Verifier:
     """
@@ -97,7 +110,9 @@ class Verifier:
     ) -> VerificationSummary:
         """
         Verify each claim against retrieved RAG chunks and document text.
-        Attempts LLM-powered semantic verification first, falls back to keyword matching.
+        Every figure in a claim must appear in the report or the retrieved SOPs;
+        a claim quoting any other value is unsupported. Claims without figures
+        are then matched on their key terms.
         """
         verified_claims: List[FactClaimVerification] = []
         supported_count = 0
@@ -122,12 +137,30 @@ class Verifier:
             primary_source = first_meta.get("document", retrieved_context[0].get("document", "retrieved_sop"))
             primary_page = first_meta.get("page", retrieved_context[0].get("page", 1))
 
+        source_values = _values_with_units(all_context_raw) if all_context_raw.strip() else None
+
         for claim in claims:
             if not claim or not claim.strip():
                 continue
 
             claim_clean = claim.strip()
             claim_lower = claim_clean.lower()
+
+            # Word overlap cannot tell 88 °C from 68 °C, so figures are checked first.
+            claim_values = _values_with_units(claim_clean)
+            if claim_values and source_values is not None:
+                missing = sorted(f"{v:g} {u}" for v, u in claim_values if (v, u) not in source_values)
+                if missing:
+                    unsupported_count += 1
+                    verified_claims.append(FactClaimVerification(
+                        claim=claim_clean,
+                        status=FactVerificationStatus.UNSUPPORTED,
+                        source_document=primary_source,
+                        page=primary_page,
+                        confidence=0.9,
+                        evidence=f"{', '.join(missing)} does not appear in the report or the retrieved SOPs."
+                    ))
+                    continue
 
             keywords = [w for w in re.findall(r"\b[a-zA-Z0-9\-_]{3,}\b", claim_lower) if w not in {
                 "the", "and", "for", "with", "this", "that", "from", "are", "was", "were", "been", "have", "has", "must", "should", "not", "all"

@@ -104,6 +104,13 @@ class ToolExecutor:
             if not p.get("document_id") and state.document_ids:
                 p["document_id"] = state.document_ids[0]
 
+        elif tool_name == "inspection_checker":
+            doc_res = state.tool_results.get("extract_document", {})
+            p["document_text"] = doc_res.get("text", "")
+            p["lines"] = doc_res.get("lines") or None
+            p["text_source"] = doc_res.get("text_source", "text_layer")
+            p["pages_data"] = doc_res.get("pages_data") or None
+
         elif tool_name == "pid_analyzer":
             # Drawing image source from parameters, previous reader step, or state document_ids
             image_src = p.get("image_source") or p.get("file_path")
@@ -126,6 +133,10 @@ class ToolExecutor:
             p["document_text"] = doc_res.get("text", "")
             if not p.get("image_source") and doc_res.get("file_path"):
                 p["image_source"] = doc_res.get("file_path")
+            # A report page whose values were already read and checked gains nothing from a
+            # small vision model describing it, and its guesses must not pass as evidence.
+            if self._inspection(state):
+                p["use_vlm"] = False
 
         elif tool_name == "rag_search":
             # Search query can incorporate user request or detected findings
@@ -189,6 +200,17 @@ class ToolExecutor:
                     sop_lines.append(f"[{doc_src}, Page {pg}{score_txt}]:\n{c.get('content', '')}")
                 evidence_blocks.append("=== RETRIEVED SOP & MANUAL EVIDENCE (LOCAL RAG) ===\n" + "\n\n".join(sop_lines))
 
+            inspection = self._inspection(state)
+            if inspection:
+                checked = [
+                    f"- {m['label_full']}: {m['value_text']} {m['unit']} -> {m['status']} "
+                    f"({m['limit']}, {m.get('limit_source') or 'no source'})"
+                    for m in inspection["measurements"]
+                ]
+                sev = inspection["severity"]
+                checked.append(f"Severity from these checks: {sev['value']} ({sev['basis']})")
+                evidence_blocks.insert(0, "=== CHECKED VALUES (READ FROM THE REPORT, LIMITS FROM THE CITED SOP) ===\n" + "\n".join(checked))
+
             if evidence_blocks:
                 if not pid_ctx and not doc_text and not (vision_res and vision_res.get("observations")):
                     grounding_instr = (
@@ -207,6 +229,8 @@ class ToolExecutor:
                         "4. Extract and state the Equipment ID, Inspection Date, Measured Values, Severity Rating, and Specific SOP Clauses.\n"
                         "5. If visual evidence is insufficient to answer any claim, explicitly state 'INSUFFICIENT VISUAL EVIDENCE' instead of guessing."
                     )
+                if inspection:
+                    grounding_instr += "\n6. Quote only the figures listed under CHECKED VALUES; do not state any other number."
                 p["prompt"] = f"PRIMARY OBJECTIVE: {state.user_request}\n\n{base_prompt}\n\n" + "\n\n".join(evidence_blocks) + f"\n\n{grounding_instr}"
 
         elif tool_name == "code_executor":
@@ -306,9 +330,10 @@ class ToolExecutor:
                     if qa.get("answer"):
                         claims.append(f"Analysis query answer: {qa.get('answer')[:120]}")
 
-                # 2. Vision tool observations
+                # 2. Vision tool observations. For an inspection report these are the report's own
+                # lines, already checked, so they are not claims to verify.
                 vision_res = state.tool_results.get("analyze_scanned_pages", {})
-                if vision_res and vision_res.get("observations"):
+                if vision_res and vision_res.get("observations") and not self._inspection(state):
                     claims.extend(vision_res.get("observations")[:3])
 
                 # 3. LLM generated reasoning
@@ -333,11 +358,16 @@ class ToolExecutor:
                     ]
                 p["claims"] = claims
                 p["context"] = state.retrieved_context
+                p["document_text"] = doc_text
             elif p["task_type"] == "calculation":
                 p["code_result"] = state.tool_results.get("execute_in_sandbox", {})
 
         elif tool_name == "document_generator":
             p["task_id"] = state.task_id
+            inspection = self._inspection(state)
+            if inspection:
+                self._approval_note_from_inspection(p, inspection, state)
+                return p
             
             doc_res = state.tool_results.get("extract_document", {})
             doc_text = doc_res.get("text", "")
@@ -715,6 +745,68 @@ class ToolExecutor:
 
         return p
 
+    @staticmethod
+    def _inspection(state: AgentState) -> Optional[Dict[str, Any]]:
+        """The checked readings for this task, when the document is an inspection report."""
+        result = state.tool_results.get("check_readings")
+        return result if isinstance(result, dict) and result.get("applicable") else None
+
+    @staticmethod
+    def _approval_note_from_inspection(p: Dict[str, Any], a: Dict[str, Any], state: AgentState) -> None:
+        """
+        Fill the approval note from the checked readings only. Every value comes
+        from the report and every verdict from an SOP clause; no model text goes in.
+        """
+        def value(key: str) -> Optional[str]:
+            return (a.get(key) or {}).get("value")
+
+        source_name = os.path.basename(str(state.document_ids[0])) if state.document_ids else "inspection report"
+        how = {
+            "ocr": "read by OCR from a scanned page",
+            "text_layer": "read from the PDF text",
+            "text_file": "read from the text file",
+        }.get(a.get("text_source"), "")
+        ref = f"{value('equipment_tag') or 'Equipment'} inspection report"
+        if value("report_no"):
+            ref += f" {value('report_no')}"
+        if value("inspection_date"):
+            ref += f", inspected {value('inspection_date')}"
+        ref += f" - {source_name}" + (f" ({how})" if how else "")
+
+        severity = a["severity"]
+        basis = severity["basis"]
+        if severity.get("stated"):
+            basis += f" The report itself rates it {severity['stated']}."
+
+        cited = [
+            f"{sop} (cited by the report; its limits were applied)" if sop in a.get("limits_applied", []) else f"{sop} (cited by the report)"
+            for sop in a.get("sop_refs", [])
+        ]
+        retrieved = [
+            f"Standard Operating Procedure: {c.get('metadata', {}).get('document', c.get('document', 'SOP'))} "
+            f"(Page {c.get('metadata', {}).get('page', c.get('page', 1))})"
+            for c in state.retrieved_context
+        ]
+
+        p.update(
+            reference_document=ref,
+            executive_summary=a["summary"],
+            measurement_checks=a["measurements"],
+            inspection_findings=[f"{f['text']} (report line {f['line']})" for f in a["findings"]]
+            or ["The report lists no separate findings."],
+            risk_severity=severity["value"] or "UNDETERMINED",
+            severity_basis=basis,
+            approval_recommendation=a["recommendation"],
+            recommended_actions=[r["text"] for r in a["recommendations"]]
+            or ["The report gives no corrective actions; the reviewing engineer must specify them."],
+            sop_references=list(dict.fromkeys(cited + retrieved))[:6],
+            sources=state.retrieved_context,
+            review_items=a["review_items"],
+            verification_status="NEEDS REVIEW" if a["review_items"] else "SUPPORTED",
+            human_review_required=bool(a["review_items"]),
+            model_used="none (values and checks are deterministic)",
+        )
+
     def _integrate_result_to_state(
         self,
         action: str,
@@ -761,6 +853,17 @@ class ToolExecutor:
             return f"[{step_idx}] {tool_upper} - Extracted document content ({pages} pages)"
         elif tool_name == "ocr":
             return f"[{step_idx}] {tool_upper} - Processed scanned inspection pages via local OCR"
+        elif tool_name == "inspection_checker":
+            if isinstance(result, dict) and result.get("applicable"):
+                ms = result.get("measurements", [])
+                outside = sum(1 for m in ms if m.get("status") in ("CRITICAL", "EXCEEDED", "WARNING", "DEVIATION"))
+                sev = (result.get("severity") or {}).get("value") or "not set"
+                n_review = len(result.get("review_items", []))
+                return (
+                    f"[{step_idx}] {tool_upper} - Read {len(ms)} values, {outside} outside their limits; "
+                    f"severity {sev}; {n_review} item(s) for engineer review"
+                )
+            return f"[{step_idx}] {tool_upper} - No inspection readings found in this document"
         elif tool_name == "vision":
             obs_cnt = len(result.get("observations", [])) if isinstance(result, dict) else 1
             return f"[{step_idx}] {tool_upper} - Identified {obs_cnt} structured inspection observations"

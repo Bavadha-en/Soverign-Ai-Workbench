@@ -1,3 +1,4 @@
+import hashlib
 import io
 import os
 from typing import Any, Dict, List, Optional, Union
@@ -28,10 +29,17 @@ class PDFProcessor:
         os.makedirs(target_dir, exist_ok=True)
         extracted_images: List[Dict[str, Any]] = []
 
+        # Name images after their source so two PDFs never overwrite each other's pages.
+        if isinstance(source, str):
+            stem = os.path.splitext(os.path.basename(source))[0]
+            digest = hashlib.sha1(os.path.abspath(source).encode("utf-8")).hexdigest()[:8]
+        else:
+            stem, digest = "pdf", hashlib.sha1(source[:65536]).hexdigest()[:8]
+
         for i, page in enumerate(reader.pages):
             try:
                 for img_idx, img in enumerate(page.images):
-                    img_filename = f"pdf_p{i+1}_img{img_idx}_{img.name}"
+                    img_filename = f"{stem}_{digest}_p{i+1}_img{img_idx}_{img.name}"
                     img_path = os.path.join(target_dir, img_filename)
                     with open(img_path, "wb") as f:
                         f.write(img.data)

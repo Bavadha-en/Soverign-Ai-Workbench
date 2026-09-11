@@ -299,10 +299,24 @@ class ConfigIQAgent:
                 sources_lines.append(f"- **{doc_name}**, Page {pg}{score_str}")
             sources_section = "\n".join(sources_lines) if sources_lines else "- Local Knowledge Base SOP Repository"
 
+            checked_section = ""
+            inspection = state.tool_results.get("check_readings")
+            if isinstance(inspection, dict) and inspection.get("applicable"):
+                rows = [
+                    f"- {m['label_full']}: {m['value_text']} {m['unit']} — **{m['status']}** "
+                    f"({m['limit']}; {m.get('limit_source') or 'no source'})"
+                    for m in inspection.get("measurements", [])
+                ]
+                sev = inspection.get("severity") or {}
+                rows.append(f"- **Severity**: {sev.get('value') or 'not set'} — {sev.get('basis', '')}")
+                rows.extend(f"- [REVIEW] {item}" for item in inspection.get("review_items", []))
+                checked_section = "#### 0. CHECKED VALUES (READ FROM THE REPORT, LIMITS FROM THE CITED SOP)\n" + "\n".join(rows) + "\n\n"
+
             state.final_output = (
                 f"### Sovereign Technical Assessment & Answer\n\n"
                 f"**User Objective**: {state.user_request}{direct_answer}\n"
                 f"**TASK ID**: `{state.task_id}` | **AIR-GAP STATUS**: Verified Local-Only\n\n"
+                f"{checked_section}"
                 f"#### 1. VISUAL EVIDENCE (VLM / Moondream / CV)\n{vis_section}\n\n"
                 f"#### 2. DOCUMENT EVIDENCE (OCR / Inspection Report)\n> {doc_snippet}\n\n"
                 f"#### 3. MODEL INFERENCE & TECHNICAL ASSESSMENT\n{llm_summary.strip()}\n\n"

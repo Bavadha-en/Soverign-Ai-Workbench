@@ -140,32 +140,39 @@ class Planner:
                 "step": 1,
                 "action": "extract_document",
                 "tool": "document_reader",
-                "description": "Extract text, layout, and pages from inspection report PDF/images",
+                "description": "Extract text, layout, and pages from inspection report PDF/images (OCR for scans)",
                 "params": {"document_id": document_id, "file_path": parameters.get("file_path") if parameters else None}
             },
             {
                 "step": 2,
+                "action": "check_readings",
+                "tool": "inspection_checker",
+                "description": "Read every measured value and check it against the limits in the cited SOP (deterministic, no AI)",
+                "params": {}
+            },
+            {
+                "step": 3,
                 "action": "analyze_scanned_pages",
                 "tool": "vision",
                 "description": "Perform visual and multimodal defect analysis on inspection report",
                 "params": {"prompt": task}
             },
             {
-                "step": 3,
+                "step": 4,
                 "action": "search_maintenance_sop",
                 "tool": "rag_search",
                 "description": "Retrieve governing engineering SOPs and replacement procedures from local vector store",
                 "params": {"query": f"standard operating procedure for {task}", "top_k": 3}
             },
             {
-                "step": 4,
+                "step": 5,
                 "action": "analyze_findings",
                 "tool": "llm_generate",
                 "description": "Synthesize inspection findings with SOP guidelines to evaluate operational risk",
                 "params": {"prompt": f"Analyze inspection report findings and SOP requirements for: {task}"}
             },
             {
-                "step": 5,
+                "step": 6,
                 "action": "verify_findings",
                 "tool": "verification",
                 "description": "Verify extracted claims and severity ratings against retrieved SOP knowledge sources",
@@ -173,7 +180,7 @@ class Planner:
             }
         ]
 
-        current_step = 6
+        current_step = 7
         include_docx = True
         include_pptx = False
         include_xlsx = False
@@ -199,9 +206,7 @@ class Planner:
                 "tool": "document_generator",
                 "description": "Generate official 8-section Word (.docx) Inspection Review & Approval Note",
                 "params": {
-                    "reference_document": parameters.get("reference_document", "Industrial Inspection Report") if parameters else "Industrial Inspection Report",
-                    "risk_severity": "HIGH",
-                    "approval_recommendation": "APPROVED WITH MANDATORY REPLACEMENT UNDER SOP-M-402"
+                    "reference_document": parameters.get("reference_document", "Industrial Inspection Report") if parameters else "Industrial Inspection Report"
                 }
             })
             current_step += 1

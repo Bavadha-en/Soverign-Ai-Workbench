@@ -74,11 +74,13 @@ def test_planner_structured_plan():
 
     # Document inspection plan
     plan = p.plan("Analyze this inspection report and prepare an approval note", document_ids=["doc_123"])
-    assert len(plan) == 6
+    assert len(plan) == 7
     actions = [step["action"] for step in plan]
     tools = [step["tool"] for step in plan]
 
     assert "extract_document" in actions
+    assert "check_readings" in actions
+    assert "inspection_checker" in tools
     assert "analyze_scanned_pages" in actions
     assert "search_maintenance_sop" in actions
     assert "analyze_findings" in actions
@@ -385,7 +387,7 @@ async def test_primary_demo_inspection_to_docx():
     )
 
     assert state.status == AgentStatus.COMPLETED
-    assert len(state.completed_steps) == 6
+    assert len(state.completed_steps) == 7
     assert len(state.generated_files) > 0
 
     docx_path = state.generated_files[0]

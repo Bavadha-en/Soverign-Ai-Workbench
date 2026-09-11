@@ -1,0 +1,795 @@
+{
+  "stage": "note",
+  "cases": [
+    {
+      "fields": [
+        {
+          "field": "equipment_tag",
+          "ok": true,
+          "got": null,
+          "want": "P-101"
+        },
+        {
+          "field": "severity",
+          "ok": true,
+          "got": "CRITICAL",
+          "want": "CRITICAL"
+        },
+        {
+          "field": "vibration.value",
+          "ok": true,
+          "got": null,
+          "want": "7.4 mm/s"
+        },
+        {
+          "field": "vibration.status",
+          "ok": true,
+          "got": null,
+          "want": "EXCEEDED"
+        },
+        {
+          "field": "bearing_temperature.value",
+          "ok": true,
+          "got": null,
+          "want": "88.0 deg C"
+        },
+        {
+          "field": "bearing_temperature.status",
+          "ok": true,
+          "got": null,
+          "want": "EXCEEDED"
+        },
+        {
+          "field": "seal_leakage.value",
+          "ok": true,
+          "got": null,
+          "want": "14 drops/min"
+        },
+        {
+          "field": "seal_leakage.status",
+          "ok": true,
+          "got": null,
+          "want": "EXCEEDED"
+        },
+        {
+          "field": "suction_pressure.value",
+          "ok": true,
+          "got": null,
+          "want": "0.32 MPa"
+        },
+        {
+          "field": "suction_pressure.status",
+          "ok": true,
+          "got": null,
+          "want": "NORMAL"
+        },
+        {
+          "field": "discharge_pressure.value",
+          "ok": true,
+          "got": null,
+          "want": "1.85 MPa"
+        },
+        {
+          "field": "discharge_pressure.status",
+          "ok": true,
+          "got": null,
+          "want": "NORMAL"
+        },
+        {
+          "field": "flow_rate.value",
+          "ok": true,
+          "got": null,
+          "want": "48.5 m3/h"
+        },
+        {
+          "field": "flow_rate.status",
+          "ok": false,
+          "got": null,
+          "want": "SLIGHT DROP"
+        },
+        {
+          "field": "recommendation[0]",
+          "ok": true,
+          "got": null,
+          "want": "Immediate emergency shutdown and electrical Lockout/Tagout (LOTO) per SOP-SAF-001."
+        },
+        {
+          "field": "recommendation[1]",
+          "ok": true,
+          "got": null,
+          "want": "Replace mechanical cartridge seal assembly."
+        },
+        {
+          "field": "recommendation[2]",
+          "ok": true,
+          "got": null,
+          "want": "Replace drive-end and non-drive-end ball and thrust bearings."
+        },
+        {
+          "field": "recommendation[3]",
+          "ok": true,
+          "got": null,
+          "want": "Laser align pump and motor shaft with angular offset <= 0.05 mm."
+        },
+        {
+          "field": "recommendation[4]",
+          "ok": true,
+          "got": null,
+          "want": "Execute casing hydrostatic proof test at 1.5x MAWP for 15 minutes before recommissioning."
+        }
+      ],
+      "correct": 18,
+      "total": 19,
+      "silent_misses": [],
+      "untraceable_values": [],
+      "claims_verified": false,
+      "false_assurance": false,
+      "review_flagged": true,
+      "case": "P-101 clean.pdf",
+      "seconds": 21.6,
+      "docx": "Approval_Note_task_358b36f2.docx",
+      "is_verified": false
+    },
+    {
+      "fields": [
+        {
+          "field": "equipment_tag",
+          "ok": false,
+          "got": null,
+          "want": "P-101"
+        },
+        {
+          "field": "severity",
+          "ok": false,
+          "got": "MEDIUM",
+          "want": "CRITICAL"
+        },
+        {
+          "field": "vibration.value",
+          "ok": false,
+          "got": null,
+          "want": "7.4 mm/s"
+        },
+        {
+          "field": "vibration.status",
+          "ok": false,
+          "got": null,
+          "want": "EXCEEDED"
+        },
+        {
+          "field": "bearing_temperature.value",
+          "ok": false,
+          "got": null,
+          "want": "88.0 deg C"
+        },
+        {
+          "field": "bearing_temperature.status",
+          "ok": false,
+          "got": null,
+          "want": "EXCEEDED"
+        },
+        {
+          "field": "seal_leakage.value",
+          "ok": false,
+          "got": null,
+          "want": "14 drops/min"
+        },
+        {
+          "field": "seal_leakage.status",
+          "ok": false,
+          "got": null,
+          "want": "EXCEEDED"
+        },
+        {
+          "field": "suction_pressure.value",
+          "ok": false,
+          "got": null,
+          "want": "0.32 MPa"
+        },
+        {
+          "field": "suction_pressure.status",
+          "ok": false,
+          "got": null,
+          "want": "NORMAL"
+        },
+        {
+          "field": "discharge_pressure.value",
+          "ok": false,
+          "got": null,
+          "want": "1.85 MPa"
+        },
+        {
+          "field": "discharge_pressure.status",
+          "ok": false,
+          "got": null,
+          "want": "NORMAL"
+        },
+        {
+          "field": "flow_rate.value",
+          "ok": false,
+          "got": null,
+          "want": "48.5 m3/h"
+        },
+        {
+          "field": "flow_rate.status",
+          "ok": false,
+          "got": null,
+          "want": "SLIGHT DROP"
+        },
+        {
+          "field": "recommendation[0]",
+          "ok": false,
+          "got": null,
+          "want": "Immediate emergency shutdown and electrical Lockout/Tagout (LOTO) per SOP-SAF-001."
+        },
+        {
+          "field": "recommendation[1]",
+          "ok": false,
+          "got": null,
+          "want": "Replace mechanical cartridge seal assembly."
+        },
+        {
+          "field": "recommendation[2]",
+          "ok": false,
+          "got": null,
+          "want": "Replace drive-end and non-drive-end ball and thrust bearings."
+        },
+        {
+          "field": "recommendation[3]",
+          "ok": false,
+          "got": null,
+          "want": "Laser align pump and motor shaft with angular offset <= 0.05 mm."
+        },
+        {
+          "field": "recommendation[4]",
+          "ok": false,
+          "got": null,
+          "want": "Execute casing hydrostatic proof test at 1.5x MAWP for 15 minutes before recommissioning."
+        }
+      ],
+      "correct": 0,
+      "total": 19,
+      "silent_misses": [
+        "vibration",
+        "bearing_temperature",
+        "seal_leakage",
+        "suction_pressure",
+        "discharge_pressure",
+        "flow_rate"
+      ],
+      "untraceable_values": [],
+      "claims_verified": false,
+      "false_assurance": false,
+      "review_flagged": true,
+      "case": "P-101 scanned.pdf",
+      "seconds": 2.4,
+      "docx": "Approval_Note_task_1de163b1.docx",
+      "is_verified": false
+    },
+    {
+      "fields": [
+        {
+          "field": "equipment_tag",
+          "ok": false,
+          "got": null,
+          "want": "P-101"
+        },
+        {
+          "field": "severity",
+          "ok": true,
+          "got": "CRITICAL",
+          "want": "CRITICAL"
+        },
+        {
+          "field": "vibration.value",
+          "ok": true,
+          "got": null,
+          "want": "7.4 mm/s"
+        },
+        {
+          "field": "vibration.status",
+          "ok": true,
+          "got": null,
+          "want": "EXCEEDED"
+        },
+        {
+          "field": "bearing_temperature.value",
+          "ok": true,
+          "got": null,
+          "want": "88.0 deg C"
+        },
+        {
+          "field": "bearing_temperature.status",
+          "ok": true,
+          "got": null,
+          "want": "EXCEEDED"
+        },
+        {
+          "field": "seal_leakage.value",
+          "ok": false,
+          "got": null,
+          "want": "14 drops/min"
+        },
+        {
+          "field": "seal_leakage.status",
+          "ok": false,
+          "got": null,
+          "want": "EXCEEDED"
+        },
+        {
+          "field": "suction_pressure.value",
+          "ok": true,
+          "got": null,
+          "want": "0.32 MPa"
+        },
+        {
+          "field": "suction_pressure.status",
+          "ok": true,
+          "got": null,
+          "want": "NORMAL"
+        },
+        {
+          "field": "discharge_pressure.value",
+          "ok": true,
+          "got": null,
+          "want": "1.85 MPa"
+        },
+        {
+          "field": "discharge_pressure.status",
+          "ok": true,
+          "got": null,
+          "want": "NORMAL"
+        },
+        {
+          "field": "flow_rate.value",
+          "ok": true,
+          "got": null,
+          "want": "48.5 m3/h"
+        },
+        {
+          "field": "flow_rate.status",
+          "ok": true,
+          "got": null,
+          "want": "SLIGHT DROP"
+        },
+        {
+          "field": "recommendation[0]",
+          "ok": true,
+          "got": null,
+          "want": "Immediate emergency shutdown and electrical Lockout/Tagout (LOTO) per SOP-SAF-001."
+        },
+        {
+          "field": "recommendation[1]",
+          "ok": true,
+          "got": null,
+          "want": "Replace mechanical cartridge seal assembly."
+        },
+        {
+          "field": "recommendation[2]",
+          "ok": true,
+          "got": null,
+          "want": "Replace drive-end and non-drive-end ball and thrust bearings."
+        },
+        {
+          "field": "recommendation[3]",
+          "ok": true,
+          "got": null,
+          "want": "Laser align pump and motor shaft with angular offset <= 0.05 mm."
+        },
+        {
+          "field": "recommendation[4]",
+          "ok": false,
+          "got": null,
+          "want": "Execute casing hydrostatic proof test at 1.5x MAWP for 15 minutes before recommissioning."
+        }
+      ],
+      "correct": 15,
+      "total": 19,
+      "silent_misses": [
+        "seal_leakage"
+      ],
+      "untraceable_values": [],
+      "claims_verified": false,
+      "false_assurance": false,
+      "review_flagged": true,
+      "case": "P-101 scanned.png",
+      "seconds": 18.9,
+      "docx": "Approval_Note_task_121852a2.docx",
+      "is_verified": false
+    },
+    {
+      "fields": [
+        {
+          "field": "equipment_tag",
+          "ok": true,
+          "got": null,
+          "want": "P-202"
+        },
+        {
+          "field": "severity",
+          "ok": true,
+          "got": "HIGH",
+          "want": "HIGH"
+        },
+        {
+          "field": "vibration.value",
+          "ok": true,
+          "got": null,
+          "want": "5.1 mm/s"
+        },
+        {
+          "field": "vibration.status",
+          "ok": false,
+          "got": null,
+          "want": "WARNING"
+        },
+        {
+          "field": "bearing_temperature.value",
+          "ok": true,
+          "got": null,
+          "want": "71.0 deg C"
+        },
+        {
+          "field": "bearing_temperature.status",
+          "ok": false,
+          "got": null,
+          "want": "NORMAL"
+        },
+        {
+          "field": "seal_leakage.value",
+          "ok": true,
+          "got": null,
+          "want": "2 drops/min"
+        },
+        {
+          "field": "seal_leakage.status",
+          "ok": false,
+          "got": null,
+          "want": "NORMAL"
+        },
+        {
+          "field": "suction_pressure.value",
+          "ok": true,
+          "got": null,
+          "want": "0.85 MPa"
+        },
+        {
+          "field": "suction_pressure.status",
+          "ok": false,
+          "got": null,
+          "want": "NORMAL"
+        },
+        {
+          "field": "discharge_pressure.value",
+          "ok": true,
+          "got": null,
+          "want": "4.2 MPa"
+        },
+        {
+          "field": "discharge_pressure.status",
+          "ok": false,
+          "got": null,
+          "want": "NORMAL"
+        },
+        {
+          "field": "flow_rate.value",
+          "ok": true,
+          "got": null,
+          "want": "82.0 m3/h"
+        },
+        {
+          "field": "flow_rate.status",
+          "ok": false,
+          "got": null,
+          "want": "NORMAL"
+        },
+        {
+          "field": "recommendation[0]",
+          "ok": true,
+          "got": null,
+          "want": "Schedule planned overhaul within 14 days per SOP-M-104 Section 3."
+        },
+        {
+          "field": "recommendation[1]",
+          "ok": true,
+          "got": null,
+          "want": "Inspect motor-pump flexible coupling elastomeric insert for torsional backlash."
+        },
+        {
+          "field": "recommendation[2]",
+          "ok": true,
+          "got": null,
+          "want": "Replenish bearing grease with ISO VG 46 synthetic lubricant."
+        },
+        {
+          "field": "recommendation[3]",
+          "ok": false,
+          "got": null,
+          "want": "Increase vibration condition monitoring to daily intervals until overhaul window."
+        }
+      ],
+      "correct": 11,
+      "total": 18,
+      "silent_misses": [],
+      "untraceable_values": [],
+      "claims_verified": false,
+      "false_assurance": false,
+      "review_flagged": true,
+      "case": "P-202 clean.pdf",
+      "seconds": 7.8,
+      "docx": "Approval_Note_task_4162cbb2.docx",
+      "is_verified": false
+    },
+    {
+      "fields": [
+        {
+          "field": "equipment_tag",
+          "ok": false,
+          "got": null,
+          "want": "P-202"
+        },
+        {
+          "field": "severity",
+          "ok": false,
+          "got": "MEDIUM",
+          "want": "HIGH"
+        },
+        {
+          "field": "vibration.value",
+          "ok": false,
+          "got": null,
+          "want": "5.1 mm/s"
+        },
+        {
+          "field": "vibration.status",
+          "ok": false,
+          "got": null,
+          "want": "WARNING"
+        },
+        {
+          "field": "bearing_temperature.value",
+          "ok": false,
+          "got": null,
+          "want": "71.0 deg C"
+        },
+        {
+          "field": "bearing_temperature.status",
+          "ok": false,
+          "got": null,
+          "want": "NORMAL"
+        },
+        {
+          "field": "seal_leakage.value",
+          "ok": false,
+          "got": null,
+          "want": "2 drops/min"
+        },
+        {
+          "field": "seal_leakage.status",
+          "ok": false,
+          "got": null,
+          "want": "NORMAL"
+        },
+        {
+          "field": "suction_pressure.value",
+          "ok": false,
+          "got": null,
+          "want": "0.85 MPa"
+        },
+        {
+          "field": "suction_pressure.status",
+          "ok": false,
+          "got": null,
+          "want": "NORMAL"
+        },
+        {
+          "field": "discharge_pressure.value",
+          "ok": false,
+          "got": null,
+          "want": "4.2 MPa"
+        },
+        {
+          "field": "discharge_pressure.status",
+          "ok": false,
+          "got": null,
+          "want": "NORMAL"
+        },
+        {
+          "field": "flow_rate.value",
+          "ok": false,
+          "got": null,
+          "want": "82.0 m3/h"
+        },
+        {
+          "field": "flow_rate.status",
+          "ok": false,
+          "got": null,
+          "want": "NORMAL"
+        },
+        {
+          "field": "recommendation[0]",
+          "ok": false,
+          "got": null,
+          "want": "Schedule planned overhaul within 14 days per SOP-M-104 Section 3."
+        },
+        {
+          "field": "recommendation[1]",
+          "ok": false,
+          "got": null,
+          "want": "Inspect motor-pump flexible coupling elastomeric insert for torsional backlash."
+        },
+        {
+          "field": "recommendation[2]",
+          "ok": false,
+          "got": null,
+          "want": "Replenish bearing grease with ISO VG 46 synthetic lubricant."
+        },
+        {
+          "field": "recommendation[3]",
+          "ok": false,
+          "got": null,
+          "want": "Increase vibration condition monitoring to daily intervals until overhaul window."
+        }
+      ],
+      "correct": 0,
+      "total": 18,
+      "silent_misses": [
+        "vibration",
+        "bearing_temperature",
+        "seal_leakage",
+        "suction_pressure",
+        "discharge_pressure",
+        "flow_rate"
+      ],
+      "untraceable_values": [],
+      "claims_verified": false,
+      "false_assurance": false,
+      "review_flagged": true,
+      "case": "P-202 scanned.pdf",
+      "seconds": 8.6,
+      "docx": "Approval_Note_task_db898b6b.docx",
+      "is_verified": false
+    },
+    {
+      "fields": [
+        {
+          "field": "equipment_tag",
+          "ok": true,
+          "got": null,
+          "want": "P-202"
+        },
+        {
+          "field": "severity",
+          "ok": false,
+          "got": "CRITICAL",
+          "want": "HIGH"
+        },
+        {
+          "field": "vibration.value",
+          "ok": true,
+          "got": null,
+          "want": "5.1 mm/s"
+        },
+        {
+          "field": "vibration.status",
+          "ok": true,
+          "got": null,
+          "want": "WARNING"
+        },
+        {
+          "field": "bearing_temperature.value",
+          "ok": true,
+          "got": null,
+          "want": "71.0 deg C"
+        },
+        {
+          "field": "bearing_temperature.status",
+          "ok": true,
+          "got": null,
+          "want": "NORMAL"
+        },
+        {
+          "field": "seal_leakage.value",
+          "ok": true,
+          "got": null,
+          "want": "2 drops/min"
+        },
+        {
+          "field": "seal_leakage.status",
+          "ok": true,
+          "got": null,
+          "want": "NORMAL"
+        },
+        {
+          "field": "suction_pressure.value",
+          "ok": true,
+          "got": null,
+          "want": "0.85 MPa"
+        },
+        {
+          "field": "suction_pressure.status",
+          "ok": true,
+          "got": null,
+          "want": "NORMAL"
+        },
+        {
+          "field": "discharge_pressure.value",
+          "ok": true,
+          "got": null,
+          "want": "4.2 MPa"
+        },
+        {
+          "field": "discharge_pressure.status",
+          "ok": true,
+          "got": null,
+          "want": "NORMAL"
+        },
+        {
+          "field": "flow_rate.value",
+          "ok": false,
+          "got": null,
+          "want": "82.0 m3/h"
+        },
+        {
+          "field": "flow_rate.status",
+          "ok": false,
+          "got": null,
+          "want": "NORMAL"
+        },
+        {
+          "field": "recommendation[0]",
+          "ok": true,
+          "got": null,
+          "want": "Schedule planned overhaul within 14 days per SOP-M-104 Section 3."
+        },
+        {
+          "field": "recommendation[1]",
+          "ok": true,
+          "got": null,
+          "want": "Inspect motor-pump flexible coupling elastomeric insert for torsional backlash."
+        },
+        {
+          "field": "recommendation[2]",
+          "ok": true,
+          "got": null,
+          "want": "Replenish bearing grease with ISO VG 46 synthetic lubricant."
+        },
+        {
+          "field": "recommendation[3]",
+          "ok": false,
+          "got": null,
+          "want": "Increase vibration condition monitoring to daily intervals until overhaul window."
+        }
+      ],
+      "correct": 14,
+      "total": 18,
+      "silent_misses": [
+        "flow_rate"
+      ],
+      "untraceable_values": [],
+      "claims_verified": false,
+      "false_assurance": false,
+      "review_flagged": true,
+      "case": "P-202 scanned.png",
+      "seconds": 32.0,
+      "docx": "Approval_Note_task_81b31888.docx",
+      "is_verified": false
+    }
+  ],
+  "summary": {
+    "fields_correct": 58,
+    "fields_total": 111,
+    "by_field": {
+      "equipment_tag": "3/6",
+      "severity": "3/6",
+      "value": "22/36",
+      "status": "15/36",
+      "recommendation": "15/27"
+    },
+    "silent_misses": 14,
+    "untraceable_values": 0,
+    "false_assurance_notes": 0,
+    "accuracy_pct": 52.3
+  },
+  "pipeline": "main @ cc2a6e6, before the accuracy work"
+}

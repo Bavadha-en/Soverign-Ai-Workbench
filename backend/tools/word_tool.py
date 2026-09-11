@@ -22,7 +22,10 @@ def create_approval_note_docx(
     verification_status: Optional[str] = "SUPPORTED",
     human_review_required: Optional[bool] = None,
     timestamp: Optional[str] = None,
-    is_synthetic_demo: bool = False
+    is_synthetic_demo: bool = False,
+    measurement_checks: Optional[List[Dict[str, Any]]] = None,
+    review_items: Optional[List[str]] = None,
+    severity_basis: Optional[str] = None
 ) -> str:
     """
     Generate an official Inspection Report Review & Approval Note as a Word (.docx) document.
@@ -43,6 +46,7 @@ def create_approval_note_docx(
     v_status_upper = (verification_status or "SUPPORTED").upper()
     needs_review = (
         human_review_required is True
+        or bool(review_items)
         or "UNSUPPORTED" in v_status_upper
         or "NEEDS REVIEW" in v_status_upper
         or "NEEDS_REVIEW" in v_status_upper
@@ -75,14 +79,24 @@ def create_approval_note_docx(
     if needs_review:
         p_warn = doc.add_paragraph()
         p_warn.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        warn_run = p_warn.add_run("⚠ HUMAN REVIEW REQUIRED: AI-assisted draft — human approval required.")
+        warn_text = "⚠ HUMAN REVIEW REQUIRED: AI-assisted draft — human approval required."
+        if review_items:
+            n = len(review_items)
+            warn_text += f" {n} item{'s' if n != 1 else ''} to check, listed in section 5."
+        warn_run = p_warn.add_run(warn_text)
         warn_run.bold = True
         warn_run.font.size = Pt(11)
         warn_run.font.color.rgb = RGBColor(190, 30, 30)
     else:
         p_cert = doc.add_paragraph()
         p_cert.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        cert_run = p_cert.add_run("✔ SOURCED & VERIFIED — Autonomous Sovereign Agent Audit Complete")
+        cert_text = (
+            "✔ SOURCED & VERIFIED — every value traced to the report and checked against the cited SOP. "
+            "Engineer sign-off still required."
+            if measurement_checks
+            else "✔ SOURCED & VERIFIED — Autonomous Sovereign Agent Audit Complete"
+        )
+        cert_run = p_cert.add_run(cert_text)
         cert_run.font.size = Pt(9)
         cert_run.font.color.rgb = RGBColor(0, 120, 40)
 
@@ -111,6 +125,10 @@ def create_approval_note_docx(
 
     # Section 3: Inspection Findings
     doc.add_heading("3. Inspection Findings", level=1)
+    if measurement_checks:
+        _add_measurement_table(doc, measurement_checks)
+        p_quote = doc.add_paragraph()
+        p_quote.add_run("Inspector's findings, quoted from the report:").bold = True
     findings = inspection_findings or ["No anomalous inspection items recorded."]
     for f in findings:
         doc.add_paragraph(f, style="List Bullet")
@@ -133,6 +151,17 @@ def create_approval_note_docx(
         risk_label.font.color.rgb = RGBColor(200, 120, 0)
     else:
         risk_label.font.color.rgb = RGBColor(0, 140, 0)
+    if severity_basis:
+        p_basis = doc.add_paragraph(f"Basis: {severity_basis}")
+        p_basis.paragraph_format.left_indent = Inches(0.2)
+    if review_items:
+        p_rev_head = doc.add_paragraph()
+        p_rev_head.paragraph_format.left_indent = Inches(0.2)
+        r_head = p_rev_head.add_run("Check these before signing:")
+        r_head.bold = True
+        r_head.font.color.rgb = RGBColor(190, 30, 30)
+        for item in review_items:
+            doc.add_paragraph(f"Review item: {item}", style="List Bullet")
 
     # Section 6: Recommended Actions
     doc.add_heading("6. Recommended Actions", level=1)
@@ -156,6 +185,24 @@ def create_approval_note_docx(
         r_rev.font.size = Pt(9.5)
         r_rev.font.color.rgb = RGBColor(150, 0, 0)
 
+    # Sign-off: ConfigIQ drafts, a named engineer approves.
+    sign = doc.add_table(rows=3, cols=3)
+    sign.style = "Table Grid"
+    for col, text in enumerate(["Role", "Name and designation", "Signature and date"]):
+        cell = sign.cell(0, col)
+        _set_cell_background(cell, "1F4E79")
+        run = cell.paragraphs[0].add_run(text)
+        run.font.bold = True
+        run.font.size = Pt(9.5)
+        run.font.color.rgb = RGBColor(255, 255, 255)
+    for row, cells in enumerate([
+        ("Prepared by", "ConfigIQ (automated draft)", "Not signed: a draft cannot approve work"),
+        ("Reviewed and approved by", "", ""),
+    ], start=1):
+        for col, text in enumerate(cells):
+            run = sign.cell(row, col).paragraphs[0].add_run(text)
+            run.font.size = Pt(9.5)
+
     # Section 8: Sources
     doc.add_heading("8. Verified Sources & Knowledge Provenance", level=1)
     src_list = sources or [{"document": reference_document, "page": 1, "score": 1.0}]
@@ -163,7 +210,8 @@ def create_approval_note_docx(
         doc_name = src.get("document", "Unknown")
         page_num = src.get("page", "N/A")
         score = src.get("score")
-        status_tag = src.get("status", "SUPPORTED")
+        # Retrieved SOP excerpts are context, not verified claims.
+        status_tag = src.get("status", "RETRIEVED")
         score_str = f" (relevance score: {score:.2f})" if score is not None else ""
         doc.add_paragraph(
             f"Source: {doc_name}, Page {page_num}{score_str} [Status: {status_tag}]",
@@ -172,6 +220,61 @@ def create_approval_note_docx(
 
     doc.save(output_path)
     return output_path
+
+
+def _add_measurement_table(doc, checks: List[Dict[str, Any]]) -> None:
+    """Each reading as read from the report, with its limit, the limit's source, and the check result."""
+    from backend.documents.inspection_checks import STATUS_TEXT
+
+    intro = doc.add_paragraph()
+    intro.add_run("Measured values, read from the report and checked by ConfigIQ against the limits in the cited SOP:").bold = True
+    table = doc.add_table(rows=len(checks) + 1, cols=5)
+    table.style = "Table Grid"
+    for col, text in enumerate(["Parameter", "Reading (report line)", "Limit and source", "ConfigIQ check", "Report states"]):
+        cell = table.cell(0, col)
+        _set_cell_background(cell, "1F4E79")
+        run = cell.paragraphs[0].add_run(text)
+        run.font.bold = True
+        run.font.size = Pt(9)
+        run.font.color.rgb = RGBColor(255, 255, 255)
+
+    colours = {
+        "CRITICAL": RGBColor(180, 0, 0),
+        "EXCEEDED": RGBColor(180, 0, 0),
+        "WARNING": RGBColor(190, 110, 0),
+        "DEVIATION": RGBColor(190, 110, 0),
+        "OK": RGBColor(0, 120, 40),
+    }
+    agreement = {"AGREES": "agrees", "DIFFERS": "differs: check", "STATED_ONLY": "not checkable"}
+    for row, m in enumerate(checks, start=1):
+        reading = f"{m['value_text']} {m['unit']}\nline {m['line']}"
+        if m.get("confidence") is not None:
+            reading += f", OCR {m['confidence']:.2f}"
+        limit = m.get("limit", "")
+        if m.get("limit_source") == "report":
+            limit += "\nstated in the report"
+        elif m.get("limit_source"):
+            limit += f"\n{m['limit_source']}"
+        status = m.get("status", "UNKNOWN")
+        check = STATUS_TEXT.get(status, status)
+        if m.get("zone"):
+            check += f" (Zone {m['zone']})"
+        if m.get("basis") == "report_statement":
+            check += ", as stated; no numeric limit to check"
+        elif m.get("meaning"):
+            check += f": {m['meaning']}"
+        stated = m.get("stated_status")
+        states = STATUS_TEXT.get(stated, stated) if stated else "not stated"
+        if agreement.get(m.get("agreement")):
+            states += f" ({agreement[m['agreement']]})"
+
+        for col, text in enumerate([m.get("label_full", ""), reading, limit, check, states]):
+            run = table.cell(row, col).paragraphs[0].add_run(text)
+            run.font.size = Pt(9)
+            if col == 3 and status in colours:
+                run.font.color.rgb = colours[status]
+                run.bold = True
+    doc.add_paragraph()
 
 
 def _set_cell_background(cell, hex_color: str):

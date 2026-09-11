@@ -36,6 +36,34 @@ EQUIPMENT_PREFIXES = {
 KNOWN_TAG_PREFIXES = ISA_INSTRUMENT_PREFIXES | EQUIPMENT_PREFIXES
 
 
+def _deskew(img: np.ndarray, max_angle: float = 5.0, step: float = 0.2, min_angle: float = 1.0) -> Tuple[np.ndarray, float]:
+    """
+    Straighten a scanned page. Tries small rotations and keeps the one whose
+    rows of ink line up best (highest variance of the horizontal projection).
+    Pages skewed by less than `min_angle` degrees are returned unchanged.
+    """
+    import cv2
+
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) if img.ndim == 3 else img
+    scale = min(1.0, 800.0 / max(gray.shape))
+    small = cv2.resize(gray, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA) if scale < 1.0 else gray
+    ink = 255 - cv2.threshold(small, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
+    h, w = ink.shape
+    best_score, best_angle = -1.0, 0.0
+    for angle in np.arange(-max_angle, max_angle + 1e-9, step):
+        m = cv2.getRotationMatrix2D((w / 2, h / 2), float(angle), 1.0)
+        rotated = cv2.warpAffine(ink, m, (w, h), flags=cv2.INTER_NEAREST, borderValue=0)
+        score = float(np.var(rotated.sum(axis=1)))
+        if score > best_score:
+            best_score, best_angle = score, float(angle)
+    if abs(best_angle) < min_angle:
+        return img, best_angle
+    height, width = img.shape[:2]
+    m = cv2.getRotationMatrix2D((width / 2, height / 2), best_angle, 1.0)
+    border = (255, 255, 255) if img.ndim == 3 else 255
+    return cv2.warpAffine(img, m, (width, height), flags=cv2.INTER_CUBIC, borderValue=border), best_angle
+
+
 def normalize_engineering_tag(raw_text: str) -> Optional[str]:
     """
     Tolerantly normalize OCR strings into standard ISA-5.1 / engineering equipment tags.
@@ -296,6 +324,69 @@ class OCREngine:
 
         return unique_tags
 
+
+    def perform_ocr_document(self, source: Union[str, np.ndarray], deskew: bool = True) -> List[Dict[str, Any]]:
+        """
+        OCR a scanned report page and return its text lines from top to bottom.
+
+        Report pages are upright, so the text-direction classifier is switched
+        off: on the demo scans it turned a whole line upside down and dropped the
+        seal-leakage reading entirely. Boxes on the same row are joined into one
+        line, and each line keeps its lowest recognition confidence so doubtful
+        reads can be flagged for review instead of trusted.
+        """
+        if not self._has_rapidocr:
+            return []
+        import cv2
+
+        img = cv2.imread(source) if isinstance(source, str) else source
+        if img is None:
+            return []
+        angle = 0.0
+        if deskew:
+            img, angle = _deskew(img)
+        try:
+            results, _ = self._rapidocr_engine(img, use_cls=False)
+        except Exception:
+            return []
+
+        items = []
+        for poly, text, conf in results or []:
+            text = str(text).strip()
+            if not text:
+                continue
+            xs = [p[0] for p in poly]
+            ys = [p[1] for p in poly]
+            items.append({
+                "text": text,
+                "confidence": round(float(conf), 3),
+                "x": min(xs), "y": min(ys),
+                "w": max(xs) - min(xs), "h": max(ys) - min(ys),
+            })
+        items.sort(key=lambda it: it["y"] + it["h"] / 2)
+
+        rows: List[Dict[str, Any]] = []
+        for it in items:
+            cy = it["y"] + it["h"] / 2
+            if rows and abs(cy - rows[-1]["cy"]) < 0.5 * min(it["h"], rows[-1]["h"]):
+                rows[-1]["items"].append(it)
+                continue
+            rows.append({"cy": cy, "h": it["h"], "items": [it]})
+
+        lines = []
+        for row in rows:
+            parts = sorted(row["items"], key=lambda it: it["x"])
+            x0 = min(p["x"] for p in parts)
+            y0 = min(p["y"] for p in parts)
+            x1 = max(p["x"] + p["w"] for p in parts)
+            y1 = max(p["y"] + p["h"] for p in parts)
+            lines.append({
+                "text": " ".join(p["text"] for p in parts),
+                "confidence": min(p["confidence"] for p in parts),
+                "bbox": [int(x0), int(y0), int(x1 - x0), int(y1 - y0)],
+                "deskew_angle": round(angle, 1),
+            })
+        return lines
 
     def perform_ocr(self, source: Union[str, bytes]) -> str:
         """
