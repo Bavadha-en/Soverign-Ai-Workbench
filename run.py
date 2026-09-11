@@ -83,7 +83,7 @@ def main():
     parser = argparse.ArgumentParser(description="ConfigIQ Launcher")
     parser.add_argument("--mock", action="store_true", help="Force mock LLM provider (no GPU needed)")
     parser.add_argument("--port", type=int, default=8000, help="Backend port (default: 8000)")
-    parser.add_argument("--host", type=str, default="0.0.0.0", help="Bind host (default: 0.0.0.0)")
+    parser.add_argument("--host", type=str, default="127.0.0.1", help="Bind host (default: 127.0.0.1, this machine only)")
     parser.add_argument("--no-browser", action="store_true", help="Don't open browser on start")
     parser.add_argument("--reload", action="store_true", help="Enable auto-reload for development")
     args = parser.parse_args()

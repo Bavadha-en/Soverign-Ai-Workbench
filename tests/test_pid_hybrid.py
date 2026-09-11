@@ -13,9 +13,16 @@ from backend.documents.pid_pipeline import pid_hybrid_pipeline
 from backend.agents.schemas import FactVerificationStatus
 
 
-PID_IMAGE_PATH = os.path.abspath("demo_data/pid/pid.png")
+# pid.png comes from the Eng_Diagrams dataset, which has no licence, so it is not
+# shipped. Point CONFIGIQ_RESEARCH_PID at a local copy to run these tests.
+PID_IMAGE_PATH = os.path.abspath(os.getenv("CONFIGIQ_RESEARCH_PID", "demo_data/pid/pid.png"))
+requires_research_pid = pytest.mark.skipif(
+    not os.path.exists(PID_IMAGE_PATH),
+    reason="Research-only P&ID (Eng_Diagrams, no licence) not present; set CONFIGIQ_RESEARCH_PID",
+)
 
 
+@requires_research_pid
 def test_pid_preprocessor_multiscale_and_tiling():
     """Verify preprocessing produces all required representations and coordinate-preserving tiles."""
     assert os.path.exists(PID_IMAGE_PATH)
@@ -58,6 +65,7 @@ def test_ocr_engineering_tag_normalization():
     assert normalize_engineering_tag("random word") is None
 
 
+@requires_research_pid
 def test_ocr_extract_engineering_tags():
     """Verify OCR extracts real tags with bounding boxes from high-resolution P&ID."""
     tags = ocr_engine.extract_engineering_tags(PID_IMAGE_PATH)
@@ -75,6 +83,7 @@ def test_ocr_extract_engineering_tags():
         assert t["source"] == "ocr"
 
 
+@requires_research_pid
 def test_symbol_detector_classification_and_unknown():
     """Verify deterministic symbol classifier recognizes canonical symbols and returns UNKNOWN for noise."""
     # Blank/noise image -> should be UNKNOWN or confidence < threshold
@@ -89,6 +98,7 @@ def test_symbol_detector_classification_and_unknown():
     assert "valve" in categories or "instrument_bubble" in categories or "component" in categories
 
 
+@requires_research_pid
 def test_topology_line_and_connectivity_extraction():
     """Verify topological extraction of process lines, dashed lines, and graph nodes/edges."""
     tags = ocr_engine.extract_engineering_tags(PID_IMAGE_PATH)
@@ -105,6 +115,7 @@ def test_topology_line_and_connectivity_extraction():
     assert topology["has_dashed_lines"] is True
 
 
+@requires_research_pid
 @pytest.mark.asyncio
 async def test_pid_hybrid_pipeline_end_to_end():
     """Verify full hybrid pipeline generates complete structured P&ID context."""

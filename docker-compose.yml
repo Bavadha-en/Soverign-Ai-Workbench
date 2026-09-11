@@ -14,7 +14,8 @@ services:
     container_name: configiq-backend
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      # Loopback only: reachable from this machine, not from the plant network
+      - "127.0.0.1:8000:8000"
     environment:
       - SOVEREIGN_MODE=true
       - OLLAMA_BASE_URL=http://ollama:11434
@@ -41,7 +42,9 @@ services:
     container_name: configiq-frontend
     restart: unless-stopped
     ports:
-      - "5173:80"
+      # Loopback only. Serving the console to other machines is a deliberate
+      # step (LAN address, /api proxy, TLS, login) - see DEPLOYMENT.md
+      - "127.0.0.1:5173:80"
     environment:
       - VITE_API_BASE_URL=http://localhost:8000
     networks:
@@ -54,8 +57,8 @@ services:
     image: ollama/ollama:latest
     container_name: configiq-ollama
     restart: unless-stopped
-    ports:
-      - "11434:11434"
+    # No published port: only the backend reaches Ollama, over sovereign-net
+    # (http://ollama:11434). Manage models with: docker exec -it configiq-ollama ollama ...
     volumes:
       - ollama_models:/root/.ollama
     networks:

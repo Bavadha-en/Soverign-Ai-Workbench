@@ -72,6 +72,10 @@ def test_failure_2_low_resolution_drawing(temp_dir):
     assert tiles[0]["height"] == 80
 
 
+@pytest.mark.skipif(
+    not pid_symbol_detector.class_centroids,
+    reason="No symbol templates loaded (Eng_Diagrams-derived ones removed, no licence); set ENG_DIAGRAM_TEMPLATES",
+)
 def test_failure_3_missing_ocr_text(temp_dir):
     """3. Missing OCR text -> visual detection still works, tag is UNKNOWN / fallback."""
     no_text_path = os.path.join(temp_dir, "no_text.png")

@@ -24,7 +24,9 @@ class Planner:
         # 1. Engineering Calculation Workflow
         calc_keywords = [
             "calculate", "pump efficiency", "pressure drop", "pipe friction",
-            "finite element", "equation", "formula", "computation", "flow rate", "head and power"
+            "finite element", "equation", "formula", "computation", "compute", "computes",
+            "flow rate", "head and power", "simulation", "simulate", "sandboxed",
+            "thermal stress", "cyclic loading", "stress limit", "physical bounds"
         ]
         if any(kw in task_lower for kw in calc_keywords):
             return self._plan_engineering_calculation(task, parameters)
@@ -41,11 +43,17 @@ class Planner:
             return self._plan_pid_engineering_analysis(task, primary_doc_id, parameters)
 
         # 3. Document Inspection & Approval Note Workflow (Primary SIH Demo)
-        doc_keywords = [
-            "inspection", "approval note", "report", "sop", "valve", "corrosion",
-            "review", "document", "scanned", "pdf", "generate approval"
+        doc_deliverable_keywords = [
+            "approval note", "generate approval", "inspection report", "generate document",
+            "review inspection", "audit document", "scanned page", "executive presentation",
+            "inspect centrifugal", "inspect secondary", "inspect pump", "inspect vessel"
         ]
-        if any(kw in task_lower for kw in doc_keywords) or doc_ids:
+        is_direct_question = any(task_lower.strip().startswith(q) for q in [
+            "what", "how", "why", "explain", "describe", "walk me", "tell me", "is it", "when must", "can you", "define"
+        ])
+
+        should_inspect = bool(doc_ids) or any(kw in task_lower for kw in doc_deliverable_keywords)
+        if should_inspect and not (is_direct_question and not doc_ids and not any(k in task_lower for k in ["generate", "approval", "deliverable"])):
             return self._plan_inspection_and_approval(task, primary_doc_id, parameters)
 
         # 4. General Knowledge Base & Technical Reasoning Workflow
@@ -268,7 +276,7 @@ class Planner:
         current_step = 4
         # Check if workbook or deliverable requested
         calc_deliverable_keywords = ["workbook", "excel", "xlsx", "sheet", "report", "deliverable", "spreadsheet", "create"]
-        if any(kw in task_lower for kw in calc_deliverable_keywords) or "calculate" in task_lower:
+        if any(kw in task_lower for kw in calc_deliverable_keywords) or any(k in task_lower for k in ["calculate", "simulation", "simulate", "comput"]):
             plan.append({
                 "step": current_step,
                 "action": "generate_calculation_workbook",

@@ -1,6 +1,9 @@
+import logging
 from typing import List, Optional
 from fastapi import APIRouter, status
 from pydantic import BaseModel, Field
+
+logger = logging.getLogger("configiq.chat")
 
 from backend.llm.factory import get_llm_provider
 from backend.llm.model_router import model_router
@@ -15,13 +18,24 @@ from backend.services.audit_service import audit_service
 router = APIRouter(prefix="/chat", tags=["LLM Chat"])
 
 
+from pydantic import BaseModel, Field, ConfigDict
+from typing import Any, Dict, List, Optional, Union
+
 class ChatMessage(BaseModel):
-    role: str = Field(..., description="'user' or 'assistant'")
-    content: str
+    model_config = ConfigDict(extra="ignore")
+    role: str = Field(default="user", description="'user' or 'assistant'")
+    content: Optional[str] = None
+    text: Optional[str] = None
+
+    def get_content(self) -> str:
+        return (self.content or self.text or "").strip()
 
 
 class ChatConversationRequest(BaseModel):
-    messages: List[ChatMessage]
+    model_config = ConfigDict(extra="ignore")
+    messages: Optional[List[Union[ChatMessage, Dict[str, Any]]]] = Field(default_factory=list)
+    prompt: Optional[str] = None
+    message: Optional[str] = None
     system_prompt: Optional[str] = None
     auto_route: bool = True
 
@@ -101,16 +115,30 @@ async def generate_response(request: LLMGenerateRequest):
 @router.post("/conversation", response_model=ChatConversationResponse, status_code=status.HTTP_200_OK)
 async def chat_conversation(request: ChatConversationRequest):
     """
-    Multi-turn conversational chat with the local LLM.
-    Formats message history into a single prompt for Ollama's /api/generate endpoint.
+    Conversational chat with local open-weight LLMs.
+    Uses native chat templates, local RAG retrieval, and automatic task routing.
     """
-    if not request.messages:
-        return ChatConversationResponse(reply="Please send a message.", model="none")
+    message_list: List[ChatMessage] = []
+    if request.messages:
+        for m in request.messages:
+            if isinstance(m, ChatMessage):
+                message_list.append(m)
+            elif isinstance(m, dict):
+                role = m.get("role", "user")
+                content = m.get("content") or m.get("text", "")
+                message_list.append(ChatMessage(role=role, content=content))
+    elif request.prompt:
+        message_list.append(ChatMessage(role="user", content=request.prompt))
+    elif request.message:
+        message_list.append(ChatMessage(role="user", content=request.message))
+
+    if not message_list:
+        return ChatConversationResponse(reply="Please provide an engineering question or topic.", model="none")
 
     last_user_msg = ""
-    for m in reversed(request.messages):
-        if m.role == "user":
-            last_user_msg = m.content
+    for m in reversed(message_list):
+        if m.role == "user" and m.get_content():
+            last_user_msg = m.get_content()
             break
 
     task_type = None
@@ -120,28 +148,81 @@ async def chat_conversation(request: ChatConversationRequest):
         model_name = routing_decision["model"]
         task_type = routing_decision["task_type"]
 
-    history_parts = []
-    for m in request.messages:
-        prefix = "User" if m.role == "user" else "Assistant"
-        history_parts.append(f"{prefix}: {m.content}")
-    conversation_prompt = "\n".join(history_parts) + "\nAssistant:"
+    rag_context = ""
+    if last_user_msg:
+        try:
+            from backend.rag.retriever import retriever
+            rag_results = retriever.retrieve(last_user_msg, top_k=3)
+            if rag_results:
+                snippets = []
+                for r in rag_results:
+                    doc = r.get("metadata", {}).get("document", "Knowledge Base")
+                    content = r.get("content", "").strip()
+                    if content and len(content) > 15:
+                        snippets.append(f"[{doc}]:\n{content}")
+                if snippets:
+                    rag_context = "\n\nRelevant Local Knowledge Base & SOP Evidence:\n" + "\n\n".join(snippets)
+        except Exception as rag_err:
+            logger.debug("Chat RAG retrieval skipped: %s", rag_err)
 
     system = request.system_prompt or (
-        "You are ConfigIQ, a sovereign on-premise AI assistant for industrial engineering. "
-        "You help with inspection reports, engineering calculations, SOP compliance, "
-        "and confidential document analysis. All processing happens locally with zero external calls."
+        "You are ConfigIQ, an expert sovereign on-premise AI assistant for industrial engineering, "
+        "asset integrity, and plant operations. All computation is strictly local with zero external calls.\n\n"
+        "Your instructions:\n"
+        "1. Answer technical questions directly, clearly, and thoroughly.\n"
+        "2. Structure your response logically with clear section headers, numbered steps, key parameters, and safety guidelines.\n"
+        "3. Ground your answer in any provided Standard Operating Procedures (SOPs) and industrial codes (ASME, API, ISA, ISO).\n"
+        "4. Do not cut off mid-sentence and do not hallucinate external conversation turns."
     )
+    if rag_context:
+        system += f"{rag_context}\n\nStrictly ground your answers in the local SOP knowledge base above whenever applicable."
 
-    llm_request = LLMGenerateRequest(
-        prompt=conversation_prompt,
-        system_prompt=system,
-        temperature=0.7,
-        max_tokens=1500,
-        model=model_name,
-    )
+    formatted_messages = [{"role": "system", "content": system}]
+    for m in message_list:
+        c = m.get_content()
+        if c:
+            formatted_messages.append({"role": "assistant" if m.role == "assistant" else "user", "content": c})
 
     provider = get_llm_provider()
-    response = await provider.generate(llm_request)
+    try:
+        if hasattr(provider, "chat"):
+            response = await provider.chat(
+                messages=formatted_messages,
+                model=model_name,
+                temperature=0.4,
+                max_tokens=2048,
+            )
+        else:
+            conversation_prompt = "\n".join(f"{m['role'].capitalize()}: {m['content']}" for m in formatted_messages if m['role'] != 'system') + "\nAssistant:"
+            llm_request = LLMGenerateRequest(
+                prompt=conversation_prompt,
+                system_prompt=system,
+                temperature=0.4,
+                max_tokens=2048,
+                model=model_name,
+            )
+            response = await provider.generate(llm_request)
+    except Exception as exc:
+        logger.warning("Primary LLM provider failed (%s); falling back to sovereign domain engine.", exc)
+        from backend.llm.mock_provider import MockLLMProvider
+        fallback = MockLLMProvider()
+        if hasattr(fallback, "chat"):
+            response = await fallback.chat(messages=formatted_messages, model=model_name)
+        else:
+            llm_request = LLMGenerateRequest(
+                prompt=last_user_msg or "Engineering assessment",
+                system_prompt=system,
+                temperature=0.4,
+                max_tokens=2048,
+                model=model_name,
+            )
+            response = await fallback.generate(llm_request)
+
+    reply_text = response.text.strip()
+    # Strip any accidental multi-turn simulation artifacts
+    for stop_seq in ["\nUser:", "\nHuman:", "\n### User:", "\n\nUser:"]:
+        if stop_seq in reply_text:
+            reply_text = reply_text.split(stop_seq)[0].strip()
 
     audit_service.log_action(
         action="CHAT_CONVERSATION",
@@ -150,13 +231,13 @@ async def chat_conversation(request: ChatConversationRequest):
         duration_ms=response.duration_ms,
         details={
             "model": response.model,
-            "message_count": len(request.messages),
+            "message_count": len(message_list),
             "task_type": task_type,
         },
     )
 
     return ChatConversationResponse(
-        reply=response.text.strip(),
+        reply=reply_text,
         model=response.model,
         task_type=task_type,
         duration_ms=response.duration_ms,

@@ -74,6 +74,18 @@ Access the services at:
 - **Health Check**: `http://localhost:8000/health`
 - **Network Sovereignty**: `http://localhost:8000/network/status`
 
+### Network exposure
+
+Every port is bound to the loopback address, so ConfigIQ is reachable only from the machine it runs on:
+
+| Service | Native mode | Docker Compose |
+|---|---|---|
+| Operations Console | `localhost:5173` (Vite dev server), or served by the backend on `127.0.0.1:8000` | `127.0.0.1:5173` |
+| Backend API | `127.0.0.1:8000` | `127.0.0.1:8000` |
+| Ollama | `127.0.0.1:11434` (Ollama's default) | Not published; only the backend reaches it at `ollama:11434` |
+
+Serving the console to other machines on the plant network is a deliberate step, not a default: bind to the server's LAN address, route the API through the console's `/api` proxy, and put TLS and a login in front first.
+
 ---
 
 ## 4. Offline Model Weight Provisioning (Air-Gapped Ingestion)
@@ -92,6 +104,13 @@ ollama pull nomic-embed-text:latest
 ### Step 2: Copy Ollama model directory to air-gapped server
 - **Linux**: Copy `~/.ollama/models` to target host `~/.ollama/models`
 - **Windows**: Copy `%USERPROFILE%\.ollama\models` to target host `%USERPROFILE%\.ollama\models`
+
+### Docker Compose: models inside the container
+The Ollama container publishes no port, so manage its models from the host with `docker exec`:
+```bash
+docker exec -it configiq-ollama ollama list
+```
+On the air-gapped server, copy the staged `models` directory into the `configiq_ollama_models` volume instead of pulling.
 
 ---
 

@@ -235,7 +235,7 @@ class NetworkMonitorService:
                 pass
 
         return [
-            {"port": 8000, "service": "ConfigIQ FastAPI Backend", "binding": "0.0.0.0:8000", "scope": "Local Host / Intranet", "status": "LISTENING"},
+            {"port": 8000, "service": "ConfigIQ FastAPI Backend", "binding": "127.0.0.1:8000", "scope": "Local Loopback Only", "status": "LISTENING"},
             {"port": 5173, "service": "ConfigIQ React Web Console", "binding": "localhost:5173", "scope": "Local Loopback Only", "status": "LISTENING"},
             {"port": 11434, "service": "Local Ollama Open-Weight LLM Engine", "binding": "127.0.0.1:11434", "scope": "Localhost IPC / Sockets", "status": "LISTENING"},
         ]

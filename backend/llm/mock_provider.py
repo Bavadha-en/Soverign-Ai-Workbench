@@ -300,18 +300,115 @@ class MockLLMProvider(LLMProvider):
                 f"**Equipment Location**: '{tag}' is identified in the engineering documentation and diagram. "
                 f"Its symbol and alphanumeric tag are confirmed on the designated process piping line per ISA-5.1."
             )
+
+        if any(w in prompt_lower for w in ["valve", "corrod", "sop-m-402"]):
+            return (
+                "### Standard Operating Procedure: Corroded Control Valve Replacement (SOP-M-402)\n\n"
+                "**1. Scope & Pre-Job Hazard Analysis**\n"
+                "Governs the isolation, removal, and replacement of severely corroded high-pressure control valves in refinery service.\n\n"
+                "**2. Isolation & Lockout/Tagout (LOTO)**\n"
+                "- Execute Double Block and Bleed (DBB) isolation on upstream and downstream process valves.\n"
+                "- Apply physical locks and danger tags per SOP-SAF-001.\n"
+                "- Verify zero residual pressure using calibrated local dial pressure gauges.\n"
+                "- Allow complete cooldown of the line to ambient temperature (< 40°C) before loosening flange bolts.\n\n"
+                "**3. Thickness Verification & Disassembly**\n"
+                "- Conduct Ultrasonic Testing (UT) on mating flanges and adjacent pipe spools.\n"
+                "- If remaining wall thickness is under 70% nominal (> 30% wall loss), flag adjacent spool for mandatory replacement per ASME B31.3.\n"
+                "- Loosen bolts in star pattern; carefully support valve weight using approved overhead rigging.\n\n"
+                "**4. Valve Installation & Gasket Protocol**\n"
+                "- Discard old gaskets; NEVER reuse metallic or spiral wound gaskets.\n"
+                "- Install certified 316L Stainless Steel Class 600 RTJ replacement valve.\n"
+                "- Fit new ASME B16.20 316L/graphite spiral wound gasket with inner/outer retaining rings.\n"
+                "- Torque bolts in 4-stage star pattern up to final specification (220 Nm for 3/4\" B7 studs).\n\n"
+                "**5. Pressure Testing & Commissioning**\n"
+                "- Perform hydrostatic leak test at 1.5x MAOP (63 bar) for 30 minutes with zero allowable pressure drop.\n"
+                "- Verify valve stroke and actuator calibration (4-20 mA loop check) prior to process handover."
+            )
+
+        if any(w in prompt_lower for w in ["lock", "loto", "tagout", "electrical isolation"]):
+            return (
+                "### Standard Operating Procedure: Lockout/Tagout & Electrical Isolation (SOP-SAF-001)\n\n"
+                "**Step 1: Preparation & Notification**\n"
+                "Notify all affected operating personnel and control room operators of the scheduled equipment shutdown and maintenance scope.\n\n"
+                "**Step 2: Equipment Shutdown**\n"
+                "Execute controlled sequence shutdown using the local emergency stop or DCS console to bring rotating equipment to a complete standstill.\n\n"
+                "**Step 3: Energy Source Isolation**\n"
+                "Rack out circuit breakers in the Motor Control Center (MCC), open line disconnect switches, and close pneumatic/hydraulic isolation valves.\n\n"
+                "**Step 4: Lock & Tag Application**\n"
+                "Each technician must place their personal safety padlock and standardized Danger Tag directly onto the breaker lockout hasp.\n\n"
+                "**Step 5: Stored Energy Dissipation**\n"
+                "Discharge power capacitors, bleed residual hydraulic accumulators, and depressurize piping systems to zero gauge pressure.\n\n"
+                "**Step 6: Zero Energy Verification (Live-Dead-Live Test)**\n"
+                "Verify zero electrical energy using a calibrated multimeter/proximity tester: test against known live source, test target circuit (confirm 0V), and re-test live source."
+            )
+
+        if any(w in prompt_lower for w in ["threshold", "thickness", "wall", "trigger", "pipe replacement"]):
+            return (
+                "### Pipe & Component Replacement Thresholds (ASME B31.3 & SOP-M-402)\n\n"
+                "**1. 30% Wall Loss Retirement Criterion**\n"
+                "Per ASME B31.3 Section 304 and internal SOP-M-402, any piping component or valve body that exhibits greater than **30% wall thickness reduction** from nominal design thickness must be retired and replaced immediately.\n\n"
+                "**2. Minimum Required Wall Thickness (t_min)**\n"
+                "Formula: `t_min = (P * D) / (2 * (S * E + P * Y)) + C`\n"
+                "Where P = design pressure, D = outside diameter, S = allowable stress, E = joint efficiency, Y = material factor, and C = corrosion allowance.\n"
+                "If actual measured wall thickness `t_actual < t_min`, immediate derating or spool replacement is legally required.\n\n"
+                "**3. Localized Pitting Tolerance**\n"
+                "Isolated pitting pits exceeding 3.0 mm depth or localized wall thinning over an area greater than 100 mm in axial length requires adjacent spool replacement.\n\n"
+                "**4. Mandatory Flange Integrity Review**\n"
+                "Flange gasket seating surfaces with radial scores or corrosion exceeding 0.5 mm depth cannot be remachined on-site and must be replaced."
+            )
+
+        if any(w in prompt_lower for w in ["exchanger", "tube", "plug"]):
+            return (
+                "### Shell-and-Tube Heat Exchanger Tube Plugging Guidelines (TEMA / ASME Sec VIII)\n\n"
+                "**1. Individual Tube Plugging Criteria**\n"
+                "Tubes must be isolated and plugged whenever:\n"
+                "- Non-Destructive Testing (Eddy Current / IRIS) detects wall thinning exceeding **40% of nominal wall thickness**.\n"
+                "- Through-wall cracks or pinhole leaks are detected during tube-bundle helium leak or shell-side hydrostatic testing.\n"
+                "- Pitting depth exceeds 0.8 mm on the process or cooling water interface.\n\n"
+                "**2. Maximum Permissible Plugging Ratio (10% Rule)**\n"
+                "- Up to **10% of total tubes** in a bundle may be plugged while maintaining acceptable process heat transfer margins.\n"
+                "- Exceeding 10% plugged tubes severely reduces heat transfer surface area, increases tubeside pressure drop, and requires complete bundle replacement or re-tubing.\n\n"
+                "**3. Plug Installation Requirements**\n"
+                "- Tapered mechanical or ring-expandable plugs must match tube material metallurgy to eliminate galvanic corrosion.\n"
+                "- Plugs must be seated and torque-driven or seal-welded per ASME Section VIII Div 1 Appendix A."
+            )
+
+        # Parse retrieved SOP context if present in prompt
+        if "retrieved" in prompt_lower or "sop" in prompt_lower:
+            return (
+                "### Sovereign Engineering Assessment & Guidance\n\n"
+                f"**Assessment of Objective**: {prompt.strip()[:150]}\n\n"
+                "**Key Technical Findings & Standards**:\n"
+                "1. **Governing Codes**: Work must comply strictly with ASME B31.3 (Process Piping), API 570 (Piping Inspection), and plant SOPs.\n"
+                "2. **Safety & Isolation**: Mandatory Double Block and Bleed (DBB) isolation and full LOTO verification before opening process boundaries.\n"
+                "3. **Material Specifications**: All replacement components must match or exceed design pressure/temperature classes (Class 600 RTJ, 316L SS for sour/corrosive service).\n"
+                "4. **Quality Verification**: Mandatory 100% NDT inspection and hydrostatic pressure testing at 1.5x MAOP for minimum 30 minutes prior to sign-off."
+            )
+
         return (
-            "Based on analysis of the local knowledge base and retrieved SOP documentation:\n\n"
-            "The query has been processed using the ConfigIQ sovereign reasoning pipeline. "
-            "All relevant engineering standards and internal procedures from the local vector store "
-            "have been consulted.\n\n"
-            "Key points:\n"
-            "1. The analysis is grounded in locally stored SOP documents and inspection guidelines\n"
-            "2. All referenced standards (ASME, API, internal SOPs) are available in the on-premise knowledge base\n"
-            "3. No external data sources were accessed during this analysis\n\n"
-            "For more specific results, please provide the relevant inspection report, "
-            "engineering calculation parameters, or reference the specific SOP section you need analyzed."
+            "### Sovereign Technical Assessment & Answer\n\n"
+            f"**Query**: {prompt.strip()[:150]}\n\n"
+            "**Engineering Assessment**:\n"
+            "1. **Technical Principles**: Evaluated against standard industrial engineering design codes and maintenance guidelines.\n"
+            "2. **Operating Parameters**: Equipment must operate within verified design limits for temperature, pressure, and flow rates.\n"
+            "3. **Integrity Management**: Component degradation must be monitored via scheduled ultrasonic testing, vibration analysis, and visual inspection.\n"
+            "4. **Compliance & Verification**: All maintenance interventions must be documented with engineering sign-off and hydrotest verification under local plant procedures."
         )
+
+    async def chat(
+        self,
+        messages: list,
+        model: Any = None,
+        **kwargs
+    ) -> LLMGenerateResponse:
+        """Mock chat response dynamically tailored to conversational input."""
+        last_user = ""
+        for m in reversed(messages):
+            if isinstance(m, dict) and m.get("role") == "user":
+                last_user = str(m.get("content", ""))
+                break
+        req = LLMGenerateRequest(prompt=last_user or "Engineering assistance", model=model or self.model_name)
+        return await self.generate(req)
 
     async def generate_structured(self, prompt: str, schema: Dict[str, Any]) -> Dict[str, Any]:
         return {

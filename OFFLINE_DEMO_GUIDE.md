@@ -94,7 +94,7 @@ The launcher will:
    - **Air-Gap Status:** `LOCAL_ONLY` (Green badge)
    - **External AI Calls:** `0` (Zero calls to OpenAI, Anthropic, Google)
    - **Cryptographic Seal:** `SOVEREIGN-SEAL-...` SHA-256 hash.
-   - **Active Listening Ports:** Strictly local loopback (`127.0.0.1:11434`, `0.0.0.0:8000`, `127.0.0.1:5173`).
+   - **Active Listening Ports:** Strictly local loopback (`127.0.0.1:11434`, `127.0.0.1:8000`, `127.0.0.1:5173`).
 
 ### Workflow 2: Industrial Inspection to Verified Word Approval Note
 1. Navigate to the **Guided Demo** or **Agent Tasks** tab.
@@ -111,12 +111,12 @@ The launcher will:
 6. Download and open the generated Word document.
 
 ### Workflow 3: P&ID Visual Understanding & Tag Extraction
-1. In the console, select `demo_data/pid/pid.png`.
+1. In the console, select `demo_data/pid/pid_system_b.png`.
 2. Enter task:
-   `"Analyze the piping connections and instrument tags between the inlet flow orifice FO-1035 and pressure indicator PI-1027."`
+   `"Analyze the piping connections and instrument tags between feed tank TK-201 and preheat exchanger E-205."`
 3. Observe:
-   - Local RapidOCR extracts all ISA-5.1 tags (`FO-1035`, `PI-1027`, `V-1063`, etc.).
-   - Local OpenCV detects valve symbols and connects piping graph.
+   - Local RapidOCR extracts the ISA-5.1 tags (`TK-201`, `P-201`, `CV-201`, `E-205`, `TT-205`, `LT-201`).
+   - Local OpenCV traces the piping lines between tags.
    - Local `moondream:latest` performs visual verification.
    - Local RAG cross-references standard piping practices.
    - Local `llama3:latest` produces tripartite report (Visual Evidence, Document Evidence, Model Inference).

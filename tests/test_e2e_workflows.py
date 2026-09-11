@@ -74,7 +74,8 @@ def test_workflow_e_rag_source_grounding():
 # 3. P&ID -> VLM -> RAG -> answer
 @pytest.mark.asyncio
 async def test_workflow_b_pid_vlm_rag_answer():
-    pid_path = os.path.abspath("demo_data/pid/pid.png")
+    # Self-made diagram (scripts/generate_pid_b.py), safe to ship
+    pid_path = os.path.abspath("demo_data/pid/pid_system_b.png")
     assert os.path.exists(pid_path), f"P&ID image not found at {pid_path}"
 
     task = "Analyze P&ID diagram for safety relief valve and pressure rating per pressure vessel SOP"

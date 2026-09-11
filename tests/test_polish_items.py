@@ -26,44 +26,45 @@ def test_sample_knowledge_base_documents_exist():
 
 
 def test_sample_images_exist():
-    """Verify all curated sample inspection images exist in datasets/sample_images."""
+    """Verify the sample folder and its README exist. Images are optional: the old
+    MVTec/FUNSD samples were non-commercial and have been removed."""
     sample_dir = os.path.join(os.getcwd(), "datasets", "sample_images")
-    expected_images = [
-        "metal_nut_surface_scratch.png",
-        "metal_nut_bent_deformation.png",
-        "cable_insulation_cut.png",
-        "structural_surface_crack.png",
-        "scanned_inspection_sheet.png",
-        "README.md",
-    ]
-    for img in expected_images:
-        path = os.path.join(sample_dir, img)
-        assert os.path.exists(path), f"Expected sample asset missing: {img}"
-        assert os.path.getsize(path) > 0, f"Sample asset empty: {img}"
+    assert os.path.exists(os.path.join(sample_dir, "README.md")), "datasets/sample_images/README.md missing"
+    for name in os.listdir(sample_dir):
+        assert os.path.getsize(os.path.join(sample_dir, name)) > 0, f"Sample asset empty: {name}"
 
 
 def test_api_list_sample_documents():
-    """Verify GET /documents/samples/list returns all sample inspection files."""
+    """Verify GET /documents/samples/list returns only samples that exist on disk."""
     response = client.get("/documents/samples/list")
     assert response.status_code == 200
     data = response.json()
     assert "samples" in data
-    assert len(data["samples"]) >= 5
-    filenames = [s["filename"] for s in data["samples"]]
-    assert "metal_nut_surface_scratch.png" in filenames
-    assert "cable_insulation_cut.png" in filenames
+    sample_dir = os.path.join(os.getcwd(), "datasets", "sample_images")
+    for s in data["samples"]:
+        assert os.path.exists(os.path.join(sample_dir, s["filename"]))
 
 
 def test_api_load_sample_document():
     """Verify POST /documents/samples/load/{filename} registers sample image into active documents."""
-    response = client.post("/documents/samples/load/metal_nut_surface_scratch.png")
+    samples = client.get("/documents/samples/list").json()["samples"]
+    if not samples:
+        pytest.skip("No licensed sample images in datasets/sample_images yet")
+    filename = samples[0]["filename"]
+    response = client.post(f"/documents/samples/load/{filename}")
     assert response.status_code == 200
     data = response.json()
-    assert data["filename"] == "metal_nut_surface_scratch.png"
+    assert data["filename"] == filename
     assert data["document_id"].startswith("sample_")
     assert data["file_size"] > 0
     assert data["source"] == "sample_dataset"
     assert os.path.exists(data["storage_path"])
+
+
+def test_api_load_missing_sample_returns_404():
+    """Verify loading a sample that is not on disk returns 404."""
+    response = client.post("/documents/samples/load/not_a_real_sample.png")
+    assert response.status_code == 404
 
 
 def test_rag_retrieval_with_new_sops():

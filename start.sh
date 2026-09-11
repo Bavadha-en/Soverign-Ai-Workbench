@@ -31,7 +31,6 @@ if [ "$MODE" == "docker" ]; then
     echo "  - Operations Console: http://localhost:5173"
     echo "  - Backend API:        http://localhost:8000"
     echo "  - API Documentation:  http://localhost:8000/docs"
-    echo "  - Local Ollama Engine: http://localhost:11434"
     exit 0
 fi
 
@@ -39,7 +38,7 @@ echo -e "${COLOR_YELLOW}[INFO] Launching ConfigIQ in Native Local Mode...${COLOR
 
 # 1. Start backend in background
 echo -e "${COLOR_CYAN}[1/2] Starting Sovereign Backend (Port 8000)...${COLOR_NC}"
-python3 -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload &
+python3 -m uvicorn backend.main:app --host 127.0.0.1 --port 8000 --reload &
 BACKEND_PID=$!
 
 trap "echo -e '${COLOR_RED}Stopping ConfigIQ...${COLOR_NC}'; kill $BACKEND_PID 2>/dev/null || true; exit 0" SIGINT SIGTERM EXIT

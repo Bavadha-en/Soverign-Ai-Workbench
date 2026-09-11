@@ -33,7 +33,7 @@ echo.
 
 :: 1. Verify / Start Backend
 echo [1/3] Starting Sovereign Backend on port 8000...
-start "ConfigIQ Backend (Port 8000)" cmd /k "uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload"
+start "ConfigIQ Backend (Port 8000)" cmd /k "python run.py --no-browser"
 
 :: 2. Wait for Backend initialization
 echo [2/3] Waiting for Backend to be healthy...

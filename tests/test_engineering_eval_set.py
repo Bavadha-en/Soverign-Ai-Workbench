@@ -6,7 +6,14 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 from backend.documents.pid_pipeline import pid_hybrid_pipeline
 
-PID_PATH = os.path.abspath("demo_data/pid/pid.png")
+# pid.png comes from the Eng_Diagrams dataset, which has no licence, so it is not
+# shipped. Point CONFIGIQ_RESEARCH_PID at a local copy to run this eval set.
+PID_PATH = os.path.abspath(os.getenv("CONFIGIQ_RESEARCH_PID", "demo_data/pid/pid.png"))
+
+pytestmark = pytest.mark.skipif(
+    not os.path.exists(PID_PATH),
+    reason="Research-only P&ID (Eng_Diagrams, no licence) not present; set CONFIGIQ_RESEARCH_PID",
+)
 
 
 @pytest.fixture(scope="module")

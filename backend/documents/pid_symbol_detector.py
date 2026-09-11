@@ -10,15 +10,20 @@ from PIL import Image
 
 _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# Source dataset used to build symbol templates. Optional: the pre-built
-# templates below are shipped with the repository, so a clone works without it.
+# Source dataset used to build symbol templates. Eng_Diagrams has no licence, so
+# neither it nor templates derived from it ship with the product. Set
+# ENG_DIAGRAMS_ZIP to a local copy for research runs only.
 DEFAULT_ZIP_PATH = os.getenv(
     "ENG_DIAGRAMS_ZIP",
     os.path.join(_REPO_ROOT, "datasets", "Eng_Diagrams-master.zip"),
 )
 
-# Templates committed with the repo so symbol detection works on a fresh clone.
-BUNDLED_TEMPLATES_PATH = os.path.join(_REPO_ROOT, "assets", "eng_diagram_templates.npz")
+# Optional bundled templates. Only licensed or self-made templates belong here;
+# ENG_DIAGRAM_TEMPLATES can point at a research-only copy kept outside the repo.
+BUNDLED_TEMPLATES_PATH = os.getenv(
+    "ENG_DIAGRAM_TEMPLATES",
+    os.path.join(_REPO_ROOT, "assets", "eng_diagram_templates.npz"),
+)
 
 # Locally rebuilt templates take priority over the bundled copy.
 CACHE_PATH = os.path.join(os.getcwd(), "outputs", "storage", "eng_diagram_templates.npz")
